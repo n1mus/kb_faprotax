@@ -1,24 +1,25 @@
 {
     "ver": "0.0.1",
     "authors": [
+        "suminw",
         "seanjungbluth"
     ],
     "contact": "",
     "categories": ["active"],
     "widgets": {
         "input": null,
-        "output": null
+        "output": "no-display"
     },
     "parameters": [ 
         {
-            "id": "parameter_1",
-            "optional": true,
+            "id": "amplicon_set_upa",
+            "optional": false,
             "advanced": false,
             "allow_multiple": false,
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_types": [ ]
+                "valid_ws_types": ["KBaseExperiments.AmpliconSet"]
             }
         }
     ],
@@ -26,7 +27,7 @@
         "service-mapping": {
             "url": "",
             "name": "kb_faprotax",
-            "method": "run_kb_faprotax",
+            "method": "faprotax",
             "input_mapping": [
                 {
                     "narrative_system_variable": "workspace",
@@ -35,8 +36,8 @@
                     "narrative_system_variable": "workspace_id",
                     "target_property": "workspace_id"
                 },{
-                    "input_parameter": "parameter_1",
-                    "target_property": "parameter_1"
+                    "input_parameter": "amplicon_set_upa",
+                    "target_property": "amplicon_set_upa"
                 }
             ],
             "output_mapping": [

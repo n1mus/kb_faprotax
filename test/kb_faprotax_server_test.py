@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import logging
 import time
 import unittest
 from configparser import ConfigParser
@@ -11,7 +12,27 @@ from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
 from installed_clients.WorkspaceClient import Workspace
 
 
+test_amplicon_set_upa = "39332/58/1"
+test_amplicon_matrix_upa = "39332/57/2"
+
+
+
+
+
+
+
+
+
 class kb_faprotaxTest(unittest.TestCase):
+
+    def test(self):
+        ret = self.serviceImpl.faprotax(
+            self.ctx, {
+                'workspace_name': self.wsName,
+                'amplicon_set_upa': test_amplicon_set_upa
+                }
+            )
+
 
     @classmethod
     def setUpClass(cls):
@@ -51,17 +72,3 @@ class kb_faprotaxTest(unittest.TestCase):
         if hasattr(cls, 'wsName'):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
-
-    # NOTE: According to Python unittest naming rules test method names should start from 'test'. # noqa
-    def test_your_method(self):
-        # Prepare test objects in workspace if needed using
-        # self.getWsClient().save_objects({'workspace': self.getWsName(),
-        #                                  'objects': []})
-        #
-        # Run your method by
-        # ret = self.getImpl().your_method(self.getContext(), parameters...)
-        #
-        # Check returned data with
-        # self.assertEqual(ret[...], ...) or other unittest methods
-        ret = self.serviceImpl.run_kb_faprotax(self.ctx, {'workspace_name': self.wsName,
-                                                             'parameter_1': 'Hello World!'})

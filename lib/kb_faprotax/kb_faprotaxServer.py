@@ -338,10 +338,10 @@ class Application(object):
         self.serverlog.set_log_level(6)
         self.rpc_service = JSONRPCServiceCustom()
         self.method_authentication = dict()
-        self.rpc_service.add(impl_kb_faprotax.run_kb_faprotax,
-                             name='kb_faprotax.run_kb_faprotax',
+        self.rpc_service.add(impl_kb_faprotax.faprotax,
+                             name='kb_faprotax.faprotax',
                              types=[dict])
-        self.method_authentication['kb_faprotax.run_kb_faprotax'] = 'required'  # noqa
+        self.method_authentication['kb_faprotax.faprotax'] = 'required'  # noqa
         self.rpc_service.add(impl_kb_faprotax.status,
                              name='kb_faprotax.status',
                              types=[dict])
