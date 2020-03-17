@@ -42,10 +42,12 @@ class AmpliconSet:
 
 class AmpliconMatrix:
 
-    def __init__(self, upa):
+    def __init__(self, upa, amp_set: AmpliconSet):
         self.upa = upa
+        self.amp_set = amp_set
+
         self._get_obj()
-        self._parse_data()
+        self._to_OTU_table()
 
 
     def _get_obj(self):
@@ -58,30 +60,46 @@ class AmpliconMatrix:
         
 
 
-    def _parse_data(self):
+    def _to_OTU_table(self):
 
         logging.info(f"Parsing AmpliconMatrix data from object")
 
         data = np.array(self.obj['data']['values'], dtype=float)
-        rows = self.obj['data']['row_ids']
-        cols = self.obj['data']['col_ids']
+        row_ids = self.obj['data']['row_ids']
+        col_ids = self.obj['data']['col_ids']
 
         dprint('data', run=locals())
 
-        data = pd.DataFrame(data, index=FakeData.tax_path_l, columns=cols) #TODO real tax paths
+        data = pd.DataFrame(
+            data, 
+            index=self._get_taxonomy_l(row_ids), 
+            columns=col_ids
+            )
         data.index.name = "taxonomy"
-        data['OTU_Id'] = rows
-        data = data[['OTU_Id'] + cols]
+        data['OTU_Id'] = row_ids # TODO get rid of this
+        data = data[['OTU_Id'] + col_ids]
 
         dprint('data', run=locals())
 
         self.taxon_table_flpth = os.path.join(Var.subdir, 'taxon_table.tsv')
 
-        data.to_csv(self.taxon_table_flpth, sep=',')
+        data.to_csv(self.taxon_table_flpth, sep='\t')
 
         
+    def _get_taxonomy_l(self, amplicon_id_l):
+        NUM_TAX_LVL = 7
 
+        amplicon_d = self.amp_set.obj['amplicons']
+        taxonomy_l = []
 
+        for amplicon_id in amplicon_id_l:
+            taxonomy = amplicon_d[amplicon_id]['taxonomy']['lineage'][:NUM_TAX_LVL]
+            taxonomy = ';'.join(taxonomy)
+            taxonomy_l.append(taxonomy)
+
+        dprint(taxonomy_l)
+
+        return taxonomy_l
 
 
 

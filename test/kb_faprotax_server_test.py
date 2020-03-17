@@ -16,7 +16,7 @@ test_amplicon_set_upa = "39332/58/1"
 test_amplicon_matrix_upa = "39332/57/2"
 
 
-
+enigma_amp_set_upa = "48363/2/1"
 
 
 
@@ -29,7 +29,7 @@ class kb_faprotaxTest(unittest.TestCase):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 'workspace_name': self.wsName,
-                'amplicon_set_upa': test_amplicon_set_upa
+                'amplicon_set_upa': enigma_amp_set_upa
                 }
             )
 

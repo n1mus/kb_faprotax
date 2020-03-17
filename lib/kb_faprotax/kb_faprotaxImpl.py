@@ -95,7 +95,7 @@ class kb_faprotax:
         logging.info('Loading AmpliconSet and AmpliconMatrix')
 
         amp_set = AmpliconSet(params['amplicon_set_upa'])
-        amp_mat = AmpliconMatrix(amp_set.get_amplicon_matrix_upa()) 
+        amp_mat = AmpliconMatrix(amp_set.get_amplicon_matrix_upa(), amp_set) 
 
 
 
@@ -133,7 +133,6 @@ class kb_faprotax:
             '--out_group_overlaps', group_overlaps_flpth,
             '--out_group_definitions_used', group_definitions_used_flpth,
             '--row_names_are_in_column', 'taxonomy',
-            '--table_delimiter', ',',
             '--omit_columns', '0',
             '--group_leftovers_as', 'OTUs_no_func_assign',
             '--verbose',
