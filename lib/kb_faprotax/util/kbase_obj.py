@@ -81,20 +81,20 @@ class AmpliconMatrix:
 
         dprint('data', run=locals())
 
-        self.taxon_table_flpth = os.path.join(Var.subdir, 'taxon_table.tsv')
+        self.taxon_table_flpth = os.path.join(Var.sub_dir, 'taxon_table.tsv')
 
         data.to_csv(self.taxon_table_flpth, sep='\t')
 
         
     def _get_taxonomy_l(self, amplicon_id_l):
-        NUM_TAX_LVL = 7
+        NUM_TAX_LVL = 11
 
         amplicon_d = self.amp_set.obj['amplicons']
         taxonomy_l = []
 
         for amplicon_id in amplicon_id_l:
             taxonomy = amplicon_d[amplicon_id]['taxonomy']['lineage'][:NUM_TAX_LVL]
-            taxonomy = ';'.join(taxonomy)
+            taxonomy = '; '.join(taxonomy)
             taxonomy_l.append(taxonomy)
 
         dprint(taxonomy_l)
