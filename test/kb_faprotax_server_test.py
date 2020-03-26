@@ -11,6 +11,7 @@ from kb_faprotax.kb_faprotaxImpl import kb_faprotax
 from kb_faprotax.kb_faprotaxServer import MethodContext
 from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
 from kb_faprotax.util.dprint import dprint
+from kb_faprotax.util.varstash import Var
 from kb_faprotax.util.kbase_obj import AttributeMapping
 
 from installed_clients.WorkspaceClient import Workspace
@@ -23,7 +24,7 @@ test_amplicon_matrix_upa = "39332/57/2"
 enigma_amp_set_upa = "48363/2/1"
 
 
-params_local = {
+params_debug = {
     'skip_run': True,
     'skip_retFiles': True,
     }
@@ -37,12 +38,12 @@ class kb_faprotaxTest(unittest.TestCase):
                 'workspace_name': self.wsName,
                 'amplicon_set_upa': enigma_amp_set_upa,
                 **self.params_ws,
-                **params_local,
+                #**params_debug,
                 }
             )
         
         # load AttributeMapping
-        row_attrmap = AttributeMapping(ret)
+        row_attrmap = AttributeMapping(Var.objects_created[0])
         instances_d = row_attrmap.obj['instances']
         attribute_d_l = row_attrmap.obj['attributes']
 

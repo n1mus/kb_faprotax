@@ -61,6 +61,7 @@ class kb_faprotax:
             'db_flpth': '/kb/module/data/FAPROTAX.txt',
             'cmd_flpth': '/opt/FAPROTAX_1.2.1/collapse_table.py',
             'warnings': [],
+            'objects_created': [],
             })
 
         os.mkdir(Var.sub_dir)
@@ -173,7 +174,7 @@ class kb_faprotax:
 
         #
         ##
-        ### update AttributeMap, AmpliconMatrix
+        ### update AttributeMap, AmpliconMatrix, AmpliconSet
         ####
         #####
 
@@ -185,10 +186,13 @@ class kb_faprotax:
         row_attrmap.add_attribute(record2groups_d)
         row_attrmap_upa_new = row_attrmap.save()
 
-        amp_mat.update_row_attrmap(row_attrmap_upa_new)
+        amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
         amp_mat_upa_new = amp_mat.save()
+
+        amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
+        amp_set_upa_new = amp_set.save()
         
-        objects_created = [row_attrmap_upa_new, amp_mat_upa_new]
+        Var.objects_created = [row_attrmap_upa_new, amp_mat_upa_new, amp_set_upa_new]
 
 
         #
@@ -242,7 +246,8 @@ class kb_faprotax:
             'warnings': Var.warnings,
             'file_links': [shockInfo_retFiles],
             'report_object_name': 'kb_faprotax_report',
-            'workspace_name': params['workspace_name']
+            'workspace_name': params['workspace_name'],
+            'objects_created': [{'ref': upa} for upa in Var.objects_created],
             }
 
         kbr = KBaseReport(self.callback_url)

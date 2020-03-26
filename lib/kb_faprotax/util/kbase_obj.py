@@ -65,7 +65,7 @@ class AttributeMapping:
              "objects": [{
                  "type": "KBaseExperiments.AttributeMapping",
                  "data": self.obj,
-                 "name": self.name,
+                 "name": self.name + '.FAPROTAX',
              }]})[0]
 
         upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
@@ -90,15 +90,35 @@ class AmpliconSet:
 
 
     def _get_obj(self):
-        self.obj = Var.dfu.get_objects({
+        obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
-            })['data'][0]['data']
+            })
 
-        self.amp_mat_upa = self.obj['amplicon_matrix_ref']
-
+        self.name = obj['data'][0]['info'][1]
+        self.amp_mat_upa = obj['data'][0]['data']['amplicon_matrix_ref']
+        self.obj = obj['data'][0]['data']
 
     def get_amplicon_matrix_upa(self):
         return self.amp_mat_upa
+
+    def update_amplicon_matrix_ref(self, amp_mat_upa_new):
+        self.obj['amplicon_matrix_ref'] = amp_mat_upa_new
+
+
+    def save(self):
+        dprint('self.obj', run=locals())
+
+        info = Var.dfu.save_objects(
+            {'id': Var.params['workspace_id'],
+             "objects": [{
+                 "type": "KBaseExperiments.AmpliconSet",
+                 "data": self.obj,
+                 "name": self.name + '.FAPROTAX',
+             }]})[0]
+
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+
+        return upa_new
 
 
 
@@ -162,7 +182,7 @@ class AmpliconMatrix:
 
         return taxonomy_l
 
-    def update_row_attrmap(self, row_attrmap_upa_new):
+    def update_row_attributemapping_ref(self, row_attrmap_upa_new):
         self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
@@ -174,7 +194,7 @@ class AmpliconMatrix:
              "objects": [{
                  "type": "KBaseMatrices.AmpliconMatrix",
                  "data": self.obj,
-                 "name": self.name,
+                 "name": self.name + '.FAPROTAX',
              }]})[0]
 
         upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
