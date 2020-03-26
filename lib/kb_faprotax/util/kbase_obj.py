@@ -1,17 +1,82 @@
+import os
 import logging
 import pandas as pd
 import numpy as np
 
-from .dprint import *
+from .dprint import dprint, where_am_i
 from .varstash import Var
 
 
 
 
 pd.set_option('display.max_rows', 100)
-pd.set_option('display.max_columns', 50)
+pd.set_option('display.max_columns', 20)
 pd.set_option('display.width', 1000)
 pd.set_option('display.max_colwidth', 20)
+
+
+
+
+
+class AttributeMapping:
+
+    def __init__(self, upa):
+        self.upa = upa
+        self._get_obj()
+
+    def _get_obj(self):
+        obj = Var.dfu.get_objects({
+            'object_refs': [self.upa]
+            })
+
+        self.name = obj['data'][0]['info'][1]
+        self.obj = obj['data'][0]['data']
+
+
+    def parse_faprotax_traits(self, groups2records_table_dense_flpth) -> dict:
+        g2r_df = pd.read_csv(groups2records_table_dense_flpth, sep='\t', comment='#')
+        g2r_df = g2r_df.fillna('').drop_duplicates().set_index('record')
+
+        r2g_d = g2r_df.to_dict(orient='index')
+        r2g_d = {record: r2g_d[record]['group'].replace(',', ':') for record in r2g_d}
+
+        dprint('r2g_d', run=locals())
+
+        return r2g_d
+
+
+    def add_attribute(self, attr_to_attr_d, attribute_lookup='taxonomy', attribute_add='FAPROTAX Traits'):
+        for i, attr_d in enumerate(self.obj['attributes']):
+            if attr_d['attribute'] == attribute_lookup:
+                lkp_ind = i
+            elif attr_d['attribute'] == attribute_add:
+                add_ind = i
+
+        for _, attr_l in self.obj['instances'].items():
+            attr_l[add_ind] = attr_to_attr_d.get(attr_l[lkp_ind], '')
+
+        dprint('self.obj["instances"]', run=locals())
+
+
+    def save(self):
+        
+        info = Var.dfu.save_objects(
+            {'id': Var.params['workspace_id'],
+             "objects": [{
+                 "type": "KBaseExperiments.AttributeMapping",
+                 "data": self.obj,
+                 "name": self.name,
+             }]})[0]
+
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+
+        dprint('upa_new', run=locals())
+
+        return upa_new
+
+
+
+
 
 
 
@@ -29,8 +94,6 @@ class AmpliconSet:
             'object_refs': [self.upa]
             })['data'][0]['data']
 
-        dprint(self.obj)
-
         self.amp_mat_upa = self.obj['amplicon_matrix_ref']
 
 
@@ -42,22 +105,23 @@ class AmpliconSet:
 
 class AmpliconMatrix:
 
-    def __init__(self, upa, amp_set: AmpliconSet):
+    def __init__(self, upa, amp_set: AmpliconSet, test=False):
         self.upa = upa
         self.amp_set = amp_set
+        self.test = test
 
         self._get_obj()
         self._to_OTU_table()
 
 
     def _get_obj(self):
-        self.obj = Var.dfu.get_objects({
+        obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
-            })['data'][0]['data']
+            })
 
-        dprint(self.obj)
-
-        
+        self.name = obj['data'][0]['info'][1]
+        self.obj = obj['data'][0]['data']
+        self.row_attrmap_upa = self.obj['row_attributemapping_ref'] 
 
 
     def _to_OTU_table(self):
@@ -68,8 +132,6 @@ class AmpliconMatrix:
         row_ids = self.obj['data']['row_ids']
         col_ids = self.obj['data']['col_ids']
 
-        dprint('data', run=locals())
-
         data = pd.DataFrame(
             data, 
             index=self._get_taxonomy_l(row_ids), 
@@ -79,7 +141,8 @@ class AmpliconMatrix:
         data['OTU_Id'] = row_ids # TODO get rid of this
         data = data[['OTU_Id'] + col_ids]
 
-        dprint('data', run=locals())
+        if self.test:
+            data = data.iloc[:50]
 
         self.taxon_table_flpth = os.path.join(Var.sub_dir, 'taxon_table.tsv')
 
@@ -97,50 +160,26 @@ class AmpliconMatrix:
             taxonomy = '; '.join(taxonomy)
             taxonomy_l.append(taxonomy)
 
-        dprint(taxonomy_l)
-
         return taxonomy_l
 
+    def update_row_attrmap(self, row_attrmap_upa_new):
+        self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
+    def save(self):
+        dprint('self.obj', run=locals())
 
-class FakeData:
+        info = Var.dfu.save_objects(
+            {'id': Var.params['workspace_id'],
+             "objects": [{
+                 "type": "KBaseMatrices.AmpliconMatrix",
+                 "data": self.obj,
+                 "name": self.name,
+             }]})[0]
 
-    tax_path_l = [
-"k__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Xanthomonadales;f__Xanthomonadaceae;g__Thermomonas;s__fusca",
-"D_0__Bacteria;D_1__Firmicutes;D_2__Bacilli;D_3__Bacillales;D_4__Bacillaceae;D_5__Bacillus;D_6__Bacillus sp. YZ5",
-"Bacteria; Chlorobi; Chlorobia; Chlorobiales; Chlorobiaceae; Chlorobaculum; Chlorobaculum thiosulfatiphilum DSM249T",   
-"Bacteria; Chlorobi; Chlorobia; Chlorobiales; Chlorobiaceae; Chlorobaculum",
-"Bacteria; Chlorobi; Chlorobia; Chlorobiales; Chlorobiaceae; Chlorobaculum; uncultured bacterium",
-"Bacteria;Proteobacteria;Alphaproteobacteria;Rhodobacterales;Rhodobacteraceae;Paracoccus;Fervidicola"            
-        ]
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return upa_new
 
 
 

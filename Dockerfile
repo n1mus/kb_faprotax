@@ -29,6 +29,8 @@ collapse_table.py --help
 
 RUN pip install numpy pandas
 
+ENV PYTHONUNBUFFERED=True
+
 # -----------------------------------------
 
 COPY ./ /kb/module

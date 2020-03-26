@@ -25,7 +25,7 @@ suggestions:
 parameters :
     amplicon_set_upa :
         ui-name : |
-            First parameter
+            AmpliconSet
         short-hint : |
             The first parameter
         long-hint  : |

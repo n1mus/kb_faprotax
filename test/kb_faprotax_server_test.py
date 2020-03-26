@@ -3,11 +3,15 @@ import os
 import logging
 import time
 import unittest
-from configparser import ConfigParser
+import uuid
+import pandas as pd
 
+from configparser import ConfigParser
 from kb_faprotax.kb_faprotaxImpl import kb_faprotax
 from kb_faprotax.kb_faprotaxServer import MethodContext
 from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
+from kb_faprotax.util.dprint import dprint
+from kb_faprotax.util.kbase_obj import AttributeMapping
 
 from installed_clients.WorkspaceClient import Workspace
 
@@ -19,8 +23,10 @@ test_amplicon_matrix_upa = "39332/57/2"
 enigma_amp_set_upa = "48363/2/1"
 
 
-
-
+params_local = {
+    'skip_run': True,
+    'skip_retFiles': True,
+    }
 
 
 class kb_faprotaxTest(unittest.TestCase):
@@ -29,9 +35,60 @@ class kb_faprotaxTest(unittest.TestCase):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 'workspace_name': self.wsName,
-                'amplicon_set_upa': enigma_amp_set_upa
+                'amplicon_set_upa': enigma_amp_set_upa,
+                **self.params_ws,
+                **params_local,
                 }
             )
+        
+        # load AttributeMapping
+        row_attrmap = AttributeMapping(ret)
+        instances_d = row_attrmap.obj['instances']
+        attribute_d_l = row_attrmap.obj['attributes']
+
+        # find index in attribute list
+        for i, attribute_d in enumerate(attribute_d_l):
+            if attribute_d['attribute'] == 'FAPROTAX Traits':
+                ind = i
+
+        # id to attribute
+        results_d = {id: attr_l[ind] for id, attr_l in instances_d.items()}
+
+        # id to traits
+        answers_d = self.parse_answers_file()
+
+        html_l = []
+
+        for id in results_d:
+            res = results_d[id]
+            ans = answers_d[id]
+
+            if res != ans:
+                res_l = res.split(':')
+                ans_l = ans.split(':')
+                assert set(ans_l).issubset(res_l)
+                
+                html = '<p>' + ':'.join([res if res in ans_l else '<b>' + res + '</b>' for res in res_l]) + '</p>'
+                html_l.append(html)
+
+        html_l = list(set(html_l))
+
+
+        with open(f'/kb/module/work/tmp/{uuid.uuid4()}.html', 'w') as fp:
+            fp.write('\n'.join(html_l))
+
+                  
+
+
+    @staticmethod
+    def parse_answers_file():
+        answers_flpth = '/kb/module/test/data/OTUMetaData_reduced.tsv'
+        answers_df = pd.read_csv(
+            answers_flpth, sep='\t', header=0, index_col='#OTU ID', usecols=['#OTU ID', 'FAPROTAX Traits']).fillna('')
+        answers_d = answers_df.to_dict(orient='index')
+        answers_d = {key: value['FAPROTAX Traits'] for key, value in answers_d.items()}
+        return answers_d
+
 
 
     @classmethod
@@ -60,6 +117,13 @@ class kb_faprotaxTest(unittest.TestCase):
                         'authenticated': 1})
         cls.wsURL = cls.cfg['workspace-url']
         cls.wsClient = Workspace(cls.wsURL)
+        cls.wsName = 'kb_faprotax_' + str(uuid.uuid4())                                                 
+        cls.wsId = cls.wsClient.create_workspace({'workspace': cls.wsName})[0]                      
+        cls.params_ws = {                                                                           
+            'workspace_id': cls.wsId,                                                               
+            'workspace_name': cls.wsName,                                                           
+            }                                                                                       
+        dprint('cls.wsId', run=locals())  
         cls.serviceImpl = kb_faprotax(cls.cfg)
         cls.scratch = cls.cfg['scratch']
         cls.callback_url = os.environ['SDK_CALLBACK_URL']
