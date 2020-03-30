@@ -59,6 +59,7 @@ class AttributeMapping:
         self.upa = upa
         self._get_obj()
 
+
     def _get_obj(self):
         obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
@@ -66,6 +67,7 @@ class AttributeMapping:
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
+
 
 
     def parse_faprotax_traits(self, groups2records_table_dense_flpth) -> dict:
@@ -78,8 +80,6 @@ class AttributeMapping:
 
         r2g_d = g2r_df.to_dict(orient='index')
         r2g_d = {record: r2g_d[record]['group'].replace(',', ':') for record in r2g_d}
-
-        dprint('r2g_d', run=locals())
 
         return r2g_d
 
@@ -97,9 +97,7 @@ class AttributeMapping:
         for _, attr_l in self.obj['instances'].items():
             attr_l[add_ind] = attr_to_attr_d.get(attr_l[lkp_ind], '')
 
-        dprint('self.obj["instances"]', run=locals())
-
-        self.obj['attributes'][add_ind]['source'] == 'kb_faprotax'
+        self.obj['attributes'][add_ind]['source'] = 'kb_faprotax'
 
 
     def save(self):
