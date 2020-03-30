@@ -7,7 +7,8 @@ import time
 import logging
 
 MAX_LINES = 70
-subprocess.run = functools.partial(subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
+subprocess.run = functools.partial(
+        subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
 
 # TODO time, where
 def dprint(*args, run=False, subproc_run_kwargs={}, print_kwargs={}):

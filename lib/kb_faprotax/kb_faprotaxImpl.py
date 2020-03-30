@@ -37,7 +37,7 @@ class kb_faprotax:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/n1mus/kb_faprotax"
-    GIT_COMMIT_HASH = "d79f9da3a8a53142328b179c9f68e5d65cf972a1"
+    GIT_COMMIT_HASH = "9a891976114f6e5cb6d5500a66f9cb333a7f36b3"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -192,8 +192,13 @@ class kb_faprotax:
         amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
         amp_set_upa_new = amp_set.save()
         
-        Var.objects_created = [row_attrmap_upa_new, amp_mat_upa_new, amp_set_upa_new]
+        Var.objects_created = [
+            {'ref': row_attrmap_upa_new, 'description': 'Added attributes for `FAPROTAX Traits`'}, 
+            {'ref': amp_mat_upa_new, 'description': 'Updated `row_attributemapping_ref`'},
+            {'ref': amp_set_upa_new, 'description': 'Updated `amplicon_matrix_ref`'},
+            ]
 
+        dprint('Var.objects_created', run=globals())
 
         #
         ##
@@ -247,7 +252,7 @@ class kb_faprotax:
             'file_links': [shockInfo_retFiles],
             'report_object_name': 'kb_faprotax_report',
             'workspace_name': params['workspace_name'],
-            'objects_created': [{'ref': upa} for upa in Var.objects_created],
+            'objects_created': Var.objects_created,
             }
 
         kbr = KBaseReport(self.callback_url)

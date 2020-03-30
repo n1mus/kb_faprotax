@@ -41,9 +41,11 @@ class kb_faprotaxTest(unittest.TestCase):
                 #**params_debug,
                 }
             )
-        
+       
+        logging.info('Comparing traits in AttributeMapping to answers')
+
         # load AttributeMapping
-        row_attrmap = AttributeMapping(Var.objects_created[0])
+        row_attrmap = AttributeMapping(Var.objects_created[0]['ref'])
         instances_d = row_attrmap.obj['instances']
         attribute_d_l = row_attrmap.obj['attributes']
 
@@ -60,7 +62,9 @@ class kb_faprotaxTest(unittest.TestCase):
 
         html_l = []
 
-        for id in results_d:
+        for id in answers_d:
+            assert id in results_d
+
             res = results_d[id]
             ans = answers_d[id]
 
@@ -134,6 +138,7 @@ class kb_faprotaxTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        print('!!!!!' * 500 + ' DON\'T FORGET TO INSPECT DIFF ' + '!!!!!' * 500)
         if hasattr(cls, 'wsName'):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')

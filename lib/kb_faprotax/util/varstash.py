@@ -1,8 +1,3 @@
-
-
-
-
-
 class Var:
 
     @classmethod
@@ -10,7 +5,4 @@ class Var:
 
         for attr_name, attr in list(d.items()):
             setattr(cls, attr_name, attr)
-
-
-
 

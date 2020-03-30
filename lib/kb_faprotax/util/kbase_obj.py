@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import numpy as np
 
-from .dprint import dprint, where_am_i
+from .dprint import dprint
 from .varstash import Var
 
 
@@ -13,6 +13,41 @@ pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
 pd.set_option('display.width', 1000)
 pd.set_option('display.max_colwidth', 20)
+
+
+
+
+"""
+class KBaseObject:
+
+    def __init__(self, upa):
+        self.upa = upa
+        self._get_obj()
+
+    def _get_obj(self):
+        obj = Var.dfu.get_objects({
+            'object_refs': [self.upa]
+            })
+
+        self.name = obj['data'][0]['info'][1]
+        self.obj = obj['data'][0]['data']
+
+    def save(self, datatype):
+        
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": datatype,
+                "data": self.obj,
+                "name": self.name + '.FAPROTAX', # TODO
+                "extra_provenance_input_refs": [self.upa]
+             }]})[0]
+
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+
+        return upa_new
+
+"""
 
 
 
@@ -34,6 +69,10 @@ class AttributeMapping:
 
 
     def parse_faprotax_traits(self, groups2records_table_dense_flpth) -> dict:
+        '''
+        Input: filepath for groups2records_dense.tsv
+        Output: dict map from taxonomy to predicted functions
+        '''
         g2r_df = pd.read_csv(groups2records_table_dense_flpth, sep='\t', comment='#')
         g2r_df = g2r_df.fillna('').drop_duplicates().set_index('record')
 
@@ -46,6 +85,9 @@ class AttributeMapping:
 
 
     def add_attribute(self, attr_to_attr_d, attribute_lookup='taxonomy', attribute_add='FAPROTAX Traits'):
+        '''
+        Add attribute for `attribute_add`, looking up by `attribute_lookup`
+        '''
         for i, attr_d in enumerate(self.obj['attributes']):
             if attr_d['attribute'] == attribute_lookup:
                 lkp_ind = i
@@ -57,15 +99,18 @@ class AttributeMapping:
 
         dprint('self.obj["instances"]', run=locals())
 
+        self.obj['attributes'][add_ind]['source'] == 'kb_faprotax'
+
 
     def save(self):
         
-        info = Var.dfu.save_objects(
-            {'id': Var.params['workspace_id'],
-             "objects": [{
-                 "type": "KBaseExperiments.AttributeMapping",
-                 "data": self.obj,
-                 "name": self.name + '.FAPROTAX',
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": "KBaseExperiments.AttributeMapping",
+                "data": self.obj,
+                "name": self.name + '.FAPROTAX', # TODO
+                "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
         upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
@@ -84,9 +129,7 @@ class AmpliconSet:
 
     def __init__(self, upa):
         self.upa = upa
-
         self._get_obj()
-
 
 
     def _get_obj(self):
@@ -98,22 +141,24 @@ class AmpliconSet:
         self.amp_mat_upa = obj['data'][0]['data']['amplicon_matrix_ref']
         self.obj = obj['data'][0]['data']
 
+
     def get_amplicon_matrix_upa(self):
         return self.amp_mat_upa
+
 
     def update_amplicon_matrix_ref(self, amp_mat_upa_new):
         self.obj['amplicon_matrix_ref'] = amp_mat_upa_new
 
 
     def save(self):
-        dprint('self.obj', run=locals())
 
-        info = Var.dfu.save_objects(
-            {'id': Var.params['workspace_id'],
-             "objects": [{
-                 "type": "KBaseExperiments.AmpliconSet",
-                 "data": self.obj,
-                 "name": self.name + '.FAPROTAX',
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": "KBaseExperiments.AmpliconSet",
+                "data": self.obj,
+                "name": self.name + '.FAPROTAX',
+                "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
         upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
@@ -182,19 +227,20 @@ class AmpliconMatrix:
 
         return taxonomy_l
 
+
     def update_row_attributemapping_ref(self, row_attrmap_upa_new):
         self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
     def save(self):
-        dprint('self.obj', run=locals())
 
-        info = Var.dfu.save_objects(
-            {'id': Var.params['workspace_id'],
-             "objects": [{
-                 "type": "KBaseMatrices.AmpliconMatrix",
-                 "data": self.obj,
-                 "name": self.name + '.FAPROTAX',
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": "KBaseMatrices.AmpliconMatrix",
+                "data": self.obj,
+                "name": self.name + '.FAPROTAX',
+                "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
         upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
