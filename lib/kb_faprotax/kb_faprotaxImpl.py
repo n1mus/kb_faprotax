@@ -194,8 +194,8 @@ class kb_faprotax:
         
         Var.objects_created = [
             {'ref': row_attrmap_upa_new, 'description': 'Added attributes for `FAPROTAX Traits`'}, 
-            {'ref': amp_mat_upa_new, 'description': 'Updated `row_attributemapping_ref`'},
-            {'ref': amp_set_upa_new, 'description': 'Updated `amplicon_matrix_ref`'},
+            {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
+            {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
             ]
 
         dprint('Var.objects_created', run=globals())
