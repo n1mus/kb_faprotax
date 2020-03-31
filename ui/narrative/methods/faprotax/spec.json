@@ -21,7 +21,19 @@
             "text_options": {
                 "valid_ws_types": ["KBaseExperiments.AmpliconSet"]
             }
+        },{
+            "id": "output_amplicon_set_name",
+            "optional": true,
+            "advanced": true,
+            "allow_multiple": false,
+            "default_values": [ "" ],
+            "field_type": "text",
+            "text_options": {
+                "valid_ws_type": ["KBaseExperiments.ApliconSet"],
+                "is_output_name": true
+            }
         }
+
     ],
     "behavior": {
         "service-mapping": {
@@ -39,6 +51,9 @@
                     "input_parameter": "amplicon_set_upa",
                     "target_property": "amplicon_set_upa",
                     "target_type_transform": "resolved-ref"
+                },{
+                    "input_parameter": "output_amplicon_set_name",
+                    "target_property": "output_amplicon_set_name"
                 }
             ],
             "output_mapping": [

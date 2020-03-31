@@ -39,7 +39,7 @@ class KBaseObject:
             "objects": [{
                 "type": datatype,
                 "data": self.obj,
-                "name": self.name + '.FAPROTAX', # TODO
+                "name": self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -107,7 +107,7 @@ class AttributeMapping:
             "objects": [{
                 "type": "KBaseExperiments.AttributeMapping",
                 "data": self.obj,
-                "name": self.name + '.FAPROTAX', # TODO
+                "name": self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -155,7 +155,7 @@ class AmpliconSet:
             "objects": [{
                 "type": "KBaseExperiments.AmpliconSet",
                 "data": self.obj,
-                "name": self.name + '.FAPROTAX',
+                "name": self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -237,7 +237,7 @@ class AmpliconMatrix:
             "objects": [{
                 "type": "KBaseMatrices.AmpliconMatrix",
                 "data": self.obj,
-                "name": self.name + '.FAPROTAX',
+                "name": self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
