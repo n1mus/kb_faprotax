@@ -100,7 +100,7 @@ class AttributeMapping:
         self.obj['attributes'][add_ind]['source'] = 'kb_faprotax'
 
 
-    def save(self):
+    def save(self, name=None):
         
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
@@ -148,7 +148,7 @@ class AmpliconSet:
         self.obj['amplicon_matrix_ref'] = amp_mat_upa_new
 
 
-    def save(self):
+    def save(self, name=None):
 
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
@@ -230,7 +230,7 @@ class AmpliconMatrix:
         self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
-    def save(self):
+    def save(self, name=None):
 
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
