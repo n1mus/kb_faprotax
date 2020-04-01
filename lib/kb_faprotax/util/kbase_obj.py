@@ -100,7 +100,7 @@ class AttributeMapping:
         self.obj['attributes'][add_ind]['source'] = 'kb_faprotax'
 
 
-    def save(self, name=None):
+    def save(self):
         
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
@@ -155,7 +155,7 @@ class AmpliconSet:
             "objects": [{
                 "type": "KBaseExperiments.AmpliconSet",
                 "data": self.obj,
-                "name": self.name,
+                "name": name if name else self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -230,7 +230,7 @@ class AmpliconMatrix:
         self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
-    def save(self, name=None):
+    def save(self):
 
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],

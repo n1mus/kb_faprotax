@@ -23,7 +23,7 @@
             }
         },{
             "id": "output_amplicon_set_name",
-            "optional": false,
+            "optional": true,
             "advanced": true,
             "allow_multiple": false,
             "default_values": [ "" ],

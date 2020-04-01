@@ -34,9 +34,9 @@ parameters :
         ui-name: |
             Output AmpliconSet name (optional)
         short-hint: |
-            The name of the updated AmpliconSet (that will reference the updated AmpiconMatrix and AttributeMapping). Default is the name of the input AmpliconSet, which will cause saving over it. Enter a name different from input AmpliconSet to avoid saving over
+            The name of the updated AmpliconSet (that will reference the updated AmpliconMatrix and AttributeMapping). Default is the name of the input AmpliconSet, which will cause saving over it. Enter a name different from input AmpliconSet to avoid saving over
         long-hint: |
-            The name of the updated AmpliconSet (that will reference the updated AmpiconMatrix and AttributeMapping). Default is the name of the input AmpliconSet, which will cause saving over it. Enter a name different from input AmpliconSet to avoid saving over
+            The name of the updated AmpliconSet (that will reference the updated AmpliconMatrix and AttributeMapping). Default is the name of the input AmpliconSet, which will cause saving over it. Enter a name different from input AmpliconSet to avoid saving over
 
 description : |
     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar efficitur felis, quis tincidunt sem congue at. Vivamus ornare feugiat faucibus. Fusce tincidunt mattis nunc, nec varius purus convallis quis. Nulla facilisi. In at magna dolor. Suspendisse sit amet felis at arcu auctor dapibus vitae pharetra dui. Nam semper mi quis tortor fermentum mollis. Donec a arcu pharetra, rutrum dolor vitae, rutrum mauris. Donec ornare fringilla sagittis. Nam laoreet est in elementum malesuada. Vestibulum id mi eget urna hendrerit feugiat. Donec et ultrices nulla. Phasellus diam eros, dapibus at tempus nec, semper vel ante.</p>

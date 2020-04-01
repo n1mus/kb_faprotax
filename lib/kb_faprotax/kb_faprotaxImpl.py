@@ -190,7 +190,7 @@ class kb_faprotax:
         amp_mat_upa_new = amp_mat.save()
 
         amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
-        amp_set_upa_new = amp_set.save()
+        amp_set_upa_new = amp_set.save(name=params.get('output_amplicon_set_name'))
         
         Var.objects_created = [
             {'ref': row_attrmap_upa_new, 'description': 'Added attributes for `FAPROTAX Traits`'}, 
