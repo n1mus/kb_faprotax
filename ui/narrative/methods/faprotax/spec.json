@@ -29,11 +29,10 @@
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_type": ["KBaseExperiments.AmpliconSet"],
+                "valid_ws_type": ["KBaseExperiments.AmpliconSet", "KBaseMatrices.AmpliconMatrix"],
                 "is_output_name": true
             }
         }
-
     ],
     "behavior": {
         "service-mapping": {

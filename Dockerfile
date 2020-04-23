@@ -23,9 +23,6 @@ mv FAPROTAX.txt /kb/module/data
 ENV PATH=/opt/FAPROTAX_1.2.1:$PATH
 
 RUN conda create --yes --name py2 python=2.7 numpy
-RUN . activate py2 && \
-collapse_table.py --help
-
 
 RUN pip install numpy pandas
 

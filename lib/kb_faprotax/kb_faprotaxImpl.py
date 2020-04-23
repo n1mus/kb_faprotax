@@ -157,7 +157,11 @@ class kb_faprotax:
         #####
 
 
-        if not (Var.debug and params.get('skip_run')):
+        if params.get('skip_run'):
+            logging.info('Skip run')
+
+
+        else:
 
             logging.info(f'Running FAPROTAX via command `{cmd}`')
 
@@ -179,11 +183,15 @@ class kb_faprotax:
         #####
 
 
-        if Var.debug and params.get('skip_run'):
+        if params.get('skip_run'):
             groups2records_table_dense_flpth = '/kb/module/test/data/faprotax_output/groups2records_dense.tsv'
 
+        attribute_add = 'FAPROTAX Traits'
+        attribute_lookup = 'taxonomy' # TODO don't hardcode this
+
         record2groups_d = row_attrmap.parse_faprotax_traits(groups2records_table_dense_flpth)
-        row_attrmap.add_attribute(record2groups_d)
+        row_attrmap.add_attribute_slot(attribute_add)
+        row_attrmap.update_attribute(record2groups_d, attribute_lookup, attribute_add)
         row_attrmap_upa_new = row_attrmap.save()
 
         amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
@@ -193,7 +201,7 @@ class kb_faprotax:
         amp_set_upa_new = amp_set.save(name=params.get('output_amplicon_set_name'))
         
         Var.objects_created = [
-            {'ref': row_attrmap_upa_new, 'description': 'Added attributes for `FAPROTAX Traits`'}, 
+            {'ref': row_attrmap_upa_new, 'description': 'Added or updated attributes for `%s`' % attribute_add}, 
             {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
             {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
             ]
@@ -206,8 +214,8 @@ class kb_faprotax:
         ####
         #####
 
-        if Var.debug and params.get('skip_retFiles'):
-            return row_attrmap_upa_new
+        if params.get('skip_retFiles'):
+            return
 
 
         def dir_to_shock(dir_path, name, description):

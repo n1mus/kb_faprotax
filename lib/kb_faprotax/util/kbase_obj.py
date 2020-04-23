@@ -17,42 +17,6 @@ pd.set_option('display.max_colwidth', 20)
 
 
 
-"""
-class KBaseObject:
-
-    def __init__(self, upa):
-        self.upa = upa
-        self._get_obj()
-
-    def _get_obj(self):
-        obj = Var.dfu.get_objects({
-            'object_refs': [self.upa]
-            })
-
-        self.name = obj['data'][0]['info'][1]
-        self.obj = obj['data'][0]['data']
-
-    def save(self, datatype):
-        
-        info = Var.dfu.save_objects({
-            'id': Var.params['workspace_id'],
-            "objects": [{
-                "type": datatype,
-                "data": self.obj,
-                "name": self.name,
-                "extra_provenance_input_refs": [self.upa]
-             }]})[0]
-
-        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
-
-        return upa_new
-
-"""
-
-
-
-
-
 class AttributeMapping:
 
     def __init__(self, upa):
@@ -84,7 +48,7 @@ class AttributeMapping:
         return r2g_d
 
 
-    def add_attribute(self, attr_to_attr_d, attribute_lookup='taxonomy', attribute_add='FAPROTAX Traits'):
+    def update_attribute(self, attr_to_attr_d, attribute_lookup, attribute_add):
         '''
         Add attribute for `attribute_add`, looking up by `attribute_lookup`
         '''
@@ -98,6 +62,27 @@ class AttributeMapping:
             attr_l[add_ind] = attr_to_attr_d.get(attr_l[lkp_ind], '')
 
         self.obj['attributes'][add_ind]['source'] = 'kb_faprotax'
+
+
+    def add_attribute_slot(self, attribute):
+        
+        # check if already exists
+        for attr_d in self.obj['attributes']:
+            if attr_d['attribute'] == attribute:
+                msg = 'Adding attribute slot `%s` to AttributeMapping with name `%s`, ' % (attribute, self.name) + \
+                      'but that attribute already exists in object'
+                logging.warning(msg)
+                Var.warnings.append(msg)
+                return
+
+        # append slot to `attributes`
+        self.obj['attributes'].append({
+            'attribute': attribute,
+            })
+
+        # append slots to `instances` 
+        for _, attr_l in self.obj['instances'].items():
+            attr_l.append('')
 
 
     def save(self):
