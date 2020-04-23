@@ -13,7 +13,7 @@ RUN apt-get update && \
 apt-get install -y wget zip gcc vim tree
 
 RUN cd /opt && \
-wget https://pages.uoregon.edu/slouca/LoucaLab/archive/FAPROTAX/SECTION_Download/MODULE_Downloads/CLASS_Latest%20release/UNIT_FAPROTAX_1.2.1/FAPROTAX_1.2.1.zip && \ 
+wget https://pages.uoregon.edu/slouca/LoucaLab/archive/FAPROTAX/SECTION_Download/MODULE_Downloads/CLASS_Old%20versions/UNIT_FAPROTAX_1.2.1/FAPROTAX_1.2.1.zip && \ 
 unzip FAPROTAX_1.2.1.zip && \ 
 rm FAPROTAX_1.2.1.zip && \
 cd FAPROTAX_1.2.1 && \
