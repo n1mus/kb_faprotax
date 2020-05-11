@@ -85,7 +85,7 @@ class AttributeMapping:
         
         # check if already exists
         for ind, attr_d in enumerate(self.obj['attributes']):
-            if attr_d['attribute'] == attribute:
+            if attr_d['attribute'] == attribute: # TODO check if same source for identity
                 msg = msg_overwriteAttribute % (attribute, self.name)
                 logging.warning(msg)
                 Var.warnings.append(msg)
@@ -101,7 +101,7 @@ class AttributeMapping:
         for attr_l in self.obj['instances'].values():
             attr_l.append('')
 
-        return len(attr_l)
+        return len(attr_l) - 1
 
 
     def save(self):

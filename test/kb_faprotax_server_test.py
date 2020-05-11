@@ -25,6 +25,7 @@ from kb_faprotax.util.kbase_obj import AttributeMapping
 _17770 = '48666/2/9'
 first50 = "48402/9/2"
 secret = '49926/6/1'
+secret_wRDP = '49926/9/3'
 
 
 params_debug = {
@@ -41,12 +42,25 @@ class kb_faprotaxTest(unittest.TestCase):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 **self.params_ws,
-                'amplicon_set_upa': first50,
+                'amplicon_set_upa': secret_wRDP,
                 #**params_debug,
                 }
             )
         return
    
+
+    def _test_attribute_and_source_exists(self):
+        pass
+   
+
+    def test_add_new_attribute(self): # TODO tie to source
+        ret = self.serviceImpl.faprotax(
+            self.ctx, {
+                **self.params_ws,
+                'amplicon_set_upa': secret_wRDP,
+            })
+        
+
     def _test_no_taxonomy_no_AttributeMapping(self):
         with self.assertRaises(NoTaxonomyException) as cm:
             ret = self.serviceImpl.faprotax(
@@ -56,13 +70,12 @@ class kb_faprotaxTest(unittest.TestCase):
                 })
             
 
-    def test_against_reference(self):
+    def _test_against_reference(self):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 **self.params_ws,
                 'amplicon_set_upa': _17770,
                 'return_test_info': True,
-                #**params_debug,
                 }
             )
 
@@ -103,7 +116,7 @@ class kb_faprotaxTest(unittest.TestCase):
         html_l = list(set(html_l))
 
 
-        with open(f'/kb/module/work/tmp/{uuid.uuid4()}.html', 'w') as fp:
+        with open(f'/kb/module/work/tmp/diff.html', 'w') as fp: # TODO automate the left-off parent function detection so you don't have to look at this every time
             fp.write('\n'.join(html_l))
 
                   
