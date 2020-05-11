@@ -52,19 +52,13 @@ class kb_faprotax:
                             level=logging.INFO)
 
         Var.update({
-            'debug': True,
             'shared_folder': self.shared_folder,
             'callback_url': self.callback_url,
             'dfu': DataFileUtil(self.callback_url),
-            'sub_dir': os.path.join(self.shared_folder, str(uuid.uuid4())),
-            'suffix': '_' + str(uuid.uuid4()),
             'db_flpth': '/kb/module/data/FAPROTAX.txt',
             'cmd_flpth': '/opt/FAPROTAX_1.2.1/collapse_table.py',
-            'warnings': [],
-            'objects_created': [],
             })
 
-        os.mkdir(Var.sub_dir)
 
 
         #END_CONSTRUCTOR
@@ -84,10 +78,13 @@ class kb_faprotax:
        
 
 
-        Var.update({
-            'ctx': ctx,
-            'params': params
+        Var.update({ # TODO reset this beginning of API-method run
+            'params': params,
+            'run_dir': os.path.join(Var.shared_folder, str(uuid.uuid4())),
+            'warnings': [],
             })
+
+        os.mkdir(Var.run_dir)
 
         dprint(params)
 
@@ -101,7 +98,15 @@ class kb_faprotax:
 
         amp_set = AmpliconSet(params['amplicon_set_upa'])
         amp_mat = AmpliconMatrix(amp_set.get_amplicon_matrix_upa(), amp_set) 
-        row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
+        if amp_mat.row_attrmap_upa:
+            logging.info('Loading row AttributeMapping')
+            row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
+        else:
+            msg = (
+"Input AmpliconSet's associated AmpliconMatrix does not have a row AttributeMapping object to assign traits to. "
+"To create a row AttributeMapping, try running the the AttributeMapping uploader or kb_RDP_Classifier first")
+            logging.warning(msg)
+            Var.warnings.append(msg)
 
 
 
@@ -115,7 +120,9 @@ class kb_faprotax:
         #####
 
 
-        out_dir = os.path.join(Var.sub_dir, 'faprotax_output')
+        log_flpth = os.path.join(Var.run_dir, 'log.txt')
+
+        out_dir = os.path.join(Var.run_dir, 'faprotax_output')
         sub_tables_dir = os.path.join(out_dir, 'sub_tables')
 
         os.mkdir(out_dir)
@@ -144,6 +151,7 @@ class kb_faprotax:
             '--omit_columns', '1',
             '--group_leftovers_as', 'OTUs_no_func_assign',
             '--verbose',
+            '|& tee', log_flpth
             ])
 
 
@@ -165,15 +173,12 @@ class kb_faprotax:
 
             logging.info(f'Running FAPROTAX via command `{cmd}`')
 
-            completed_proc = subprocess.run(cmd, shell=True, executable='/bin/bash', stdout=sys.stdout, stderr=subprocess.PIPE)
-            
+            completed_proc = subprocess.run(cmd, shell=True, executable='/bin/bash', stdout=sys.stdout, stderr=sys.stdout)
 
             if completed_proc.returncode != 0:
-                raise Exception(
-                    f"FAPROTAX command: `{cmd}` exited "
-                    f"with non-zero return code: {completed_proc.returncode}"
-                    f"and stderr: {completed_proc.stderr}"
-                    )
+                msg = (
+"FAPROTAX command `%s` returned with non-zero return code `%d`. Please check logs for more details")
+                raise NonZeroReturnException(msg)
 
 
         #
@@ -186,91 +191,71 @@ class kb_faprotax:
         if params.get('skip_run'):
             groups2records_table_dense_flpth = '/kb/module/test/data/faprotax_output/groups2records_dense.tsv'
 
-        attribute_add = 'FAPROTAX Traits'
-        attribute_lookup = 'taxonomy' # TODO don't hardcode this
+        objects_created = []
+        if amp_mat.row_attrmap_upa:
 
-        record2groups_d = row_attrmap.parse_faprotax_traits(groups2records_table_dense_flpth)
-        row_attrmap.add_attribute_slot(attribute_add)
-        row_attrmap.update_attribute(record2groups_d, attribute_lookup, attribute_add)
-        row_attrmap_upa_new = row_attrmap.save()
+            attribute = 'FAPROTAX Traits'
+            source = 'kb_faprotax/faprotax'
 
-        amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
-        amp_mat_upa_new = amp_mat.save()
+            taxStr_2_traits_d = row_attrmap.parse_faprotax_traits(groups2records_table_dense_flpth)
+            ind = row_attrmap.add_attribute_slot(attribute, source)
+            row_attrmap.update_attribute(ind, taxStr_2_traits_d, amp_set) # AmpliconSet is the rosetta stone between taxStr and traits (supplies id)
+            row_attrmap_upa_new = row_attrmap.save()
 
-        amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
-        amp_set_upa_new = amp_set.save(name=params.get('output_amplicon_set_name'))
-        
-        Var.objects_created = [
-            {'ref': row_attrmap_upa_new, 'description': 'Added or updated attributes for `%s`' % attribute_add}, 
-            {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
-            {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
+            amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
+            amp_mat_upa_new = amp_mat.save()
+
+            amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
+            amp_set_upa_new = amp_set.save(name=params.get('output_amplicon_set_name'))
+            
+            objects_created = [
+                {'ref': row_attrmap_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
+                {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
+                {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
             ]
 
-        dprint('Var.objects_created', run=globals())
-
-        #
-        ##
-        ### return files
-        ####
-        #####
-
-        if params.get('skip_retFiles'):
-            return
-
-
-        def dir_to_shock(dir_path, name, description):
-            '''
-            For regular directories or html directories
-            
-            name - for regular directories: the name of the flat (zip) file returned to ui
-                   for html directories: the name of the html file
-            '''
-            dfu_fileToShock_ret = Var.dfu.file_to_shock({
-                'file_path': dir_path,
-                'make_handle': 0,
-                'pack': 'zip',
-                })
-
-            dir_shockInfo = {
-                'shock_id': dfu_fileToShock_ret['shock_id'],
-                'name': name,
-                'description': description
-                }
-
-            return dir_shockInfo
-
-
-        shockInfo_retFiles = dir_to_shock(
-            Var.sub_dir, 
-            'faprotax_results.zip',
-            'Input for and output generated by FAPROTAX'
-            )
-
 
 
         #
         ##
-        ### report
+        ### return 
         ####
         #####
+
+
+        file_links = [{
+            'path': Var.run_dir, 
+            'name': 'faprotax_results.zip',
+            'description': 'Input, output'
+            }]
 
 
         params_report = {
             'warnings': Var.warnings,
-            'file_links': [shockInfo_retFiles],
+            'objects_created': objects_created,
+            'file_links': file_links,
             'report_object_name': 'kb_faprotax_report',
             'workspace_name': params['workspace_name'],
-            'objects_created': Var.objects_created,
             }
 
-        kbr = KBaseReport(self.callback_url)
-        report_output = kbr.create_extended_report(params_report)
 
-        output = {
-            'report_name': report_output['name'],
-            'report_ref': report_output['ref'],
-        }
+        if Var.debug and params.get('skip_kbReport'):
+            output = {}
 
+        else:
+            kbr = KBaseReport(self.callback_url)
+            report_output = kbr.create_extended_report(params_report)
+
+            output = {
+                'report_name': report_output['name'],
+                'report_ref': report_output['ref'],
+            }
+
+
+        if Var.debug and params.get('return_test_info'):
+            return {
+                **params_report,
+            }
 
         #END faprotax
 

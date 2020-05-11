@@ -10,42 +10,66 @@ from configparser import ConfigParser
 from kb_faprotax.kb_faprotaxImpl import kb_faprotax
 from kb_faprotax.kb_faprotaxServer import MethodContext
 from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
+from installed_clients.WorkspaceClient import Workspace
+
+from kb_faprotax.util.error import *
+from kb_faprotax.util.message import *
 from kb_faprotax.util.dprint import dprint
 from kb_faprotax.util.varstash import Var
 from kb_faprotax.util.kbase_obj import AttributeMapping
 
-from installed_clients.WorkspaceClient import Workspace
 
 
-test_amplicon_set_upa = "39332/58/1"
-test_amplicon_matrix_upa = "39332/57/2"
 
 
-enigma_amp_set_upa = "48363/2/1"
+_17770 = '48666/2/9'
+first50 = "48402/9/2"
+secret = '49926/6/1'
 
 
 params_debug = {
+    'skip_obj': True,
     'skip_run': True,
-    'skip_retFiles': True,
+    'skip_kbReport': True,
+    'return_test_info': True,
     }
 
 
 class kb_faprotaxTest(unittest.TestCase):
 
-    def test(self):
+    def _test(self):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
-                'workspace_name': self.wsName,
-                'amplicon_set_upa': enigma_amp_set_upa,
                 **self.params_ws,
+                'amplicon_set_upa': first50,
                 #**params_debug,
                 }
             )
-       
+        return
+   
+    def _test_no_taxonomy_no_AttributeMapping(self):
+        with self.assertRaises(NoTaxonomyException) as cm:
+            ret = self.serviceImpl.faprotax(
+                self.ctx, {
+                    **self.params_ws,
+                    'amplicon_set_upa': secret,
+                })
+            
+
+    def test_against_reference(self):
+        ret = self.serviceImpl.faprotax(
+            self.ctx, {
+                **self.params_ws,
+                'amplicon_set_upa': _17770,
+                'return_test_info': True,
+                #**params_debug,
+                }
+            )
+
         logging.info('Comparing traits in AttributeMapping to answers')
 
         # load AttributeMapping
-        row_attrmap = AttributeMapping(Var.objects_created[0]['ref'])
+        row_attrmap = AttributeMapping(ret['objects_created'][0]['ref'])
         instances_d = row_attrmap.obj['instances']
         attribute_d_l = row_attrmap.obj['attributes']
 
@@ -138,7 +162,10 @@ class kb_faprotaxTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        print('!!!!!' * 500 + ' DON\'T FORGET TO INSPECT DIFF ' + '!!!!!' * 500)
         if hasattr(cls, 'wsName'):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
+        test_names = [key for key, value in cls.__dict__.items() if type(key) == str and key.startswith('test') and callable(value)]
+        print('All tests:', test_names)
+        dec = '!!!' * 200
+        print(dec, "DON'T FORGET TO SEE DIFF", dec)

@@ -5,6 +5,8 @@ import numpy as np
 
 from .dprint import dprint
 from .varstash import Var
+from .error import *
+from .message import *
 
 
 
@@ -48,41 +50,58 @@ class AttributeMapping:
         return r2g_d
 
 
-    def update_attribute(self, attr_to_attr_d, attribute_lookup, attribute_add):
+    def update_attribute(self, ind: int, taxStr_2_traits_d: dict, amp_set):
         '''
-        Add attribute for `attribute_add`, looking up by `attribute_lookup`
+        Update attribute at index `ind`
+        
+        taxStr -> amplicon ids -> instances to insert traits
         '''
-        for i, attr_d in enumerate(self.obj['attributes']):
-            if attr_d['attribute'] == attribute_lookup:
-                lkp_ind = i
-            elif attr_d['attribute'] == attribute_add:
-                add_ind = i
 
-        for _, attr_l in self.obj['instances'].items():
-            attr_l[add_ind] = attr_to_attr_d.get(attr_l[lkp_ind], '')
+        # taxStr -> amplicon ids
 
-        self.obj['attributes'][add_ind]['source'] = 'kb_faprotax'
+        taxStr_2_ids_d = {}
+
+        for id_, amplicon_d in amp_set.obj['amplicons'].items():
+            taxStr = '; '.join(amplicon_d['taxonomy']['lineage'])
+            if taxStr in taxStr_2_ids_d:
+                taxStr_2_ids_d[taxStr].append(id_)
+            else:
+                taxStr_2_ids_d[taxStr] = [id_]
+
+        dprint('taxStr_2_ids_d', run=locals())
+        
+        # taxStr -> amplicon ids -> instances to insert traits
+        
+        for taxStr, traits in taxStr_2_traits_d.items():
+            for id_ in taxStr_2_ids_d.get(taxStr, []):
+                self.obj['instances'][id_][ind] = traits
 
 
-    def add_attribute_slot(self, attribute):
+    def add_attribute_slot(self, attribute, source) -> int:
+        '''
+        If attribute not already entered, add slot for it
+        Return its index in the attributes/instances
+        '''
         
         # check if already exists
-        for attr_d in self.obj['attributes']:
+        for ind, attr_d in enumerate(self.obj['attributes']):
             if attr_d['attribute'] == attribute:
-                msg = 'Adding attribute slot `%s` to AttributeMapping with name `%s`, ' % (attribute, self.name) + \
-                      'but that attribute already exists in object'
+                msg = msg_overwriteAttribute % (attribute, self.name)
                 logging.warning(msg)
                 Var.warnings.append(msg)
-                return
+                return ind
 
         # append slot to `attributes`
         self.obj['attributes'].append({
             'attribute': attribute,
+            'source': source,
             })
 
         # append slots to `instances` 
-        for _, attr_l in self.obj['instances'].items():
+        for attr_l in self.obj['instances'].values():
             attr_l.append('')
+
+        return len(attr_l)
 
 
     def save(self):
@@ -169,7 +188,7 @@ class AmpliconMatrix:
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
-        self.row_attrmap_upa = self.obj['row_attributemapping_ref'] 
+        self.row_attrmap_upa = self.obj.get('row_attributemapping_ref') 
 
 
     def _to_OTU_table(self):
@@ -182,33 +201,35 @@ class AmpliconMatrix:
 
         data = pd.DataFrame(
             data, 
-            index=self._get_taxonomy_l(row_ids), 
+            index=self._get_taxStr_l(row_ids), 
             columns=col_ids
             )
         data.index.name = "taxonomy"
-        data['OTU_Id'] = row_ids # TODO get rid of this
+        data['OTU_Id'] = row_ids # TODO get rid of this? doesn't help
         data = data[['OTU_Id'] + col_ids]
 
         if self.test:
             data = data.iloc[:50]
 
-        self.taxon_table_flpth = os.path.join(Var.sub_dir, 'taxon_table.tsv')
+        self.taxon_table_flpth = os.path.join(Var.run_dir, 'taxon_table.tsv')
 
         data.to_csv(self.taxon_table_flpth, sep='\t')
 
         
-    def _get_taxonomy_l(self, amplicon_id_l):
-        NUM_TAX_LVL = 11
+    def _get_taxStr_l(self, id_l):
+        amplicon_d_d = self.amp_set.obj['amplicons']
+        taxStr_l = []
 
-        amplicon_d = self.amp_set.obj['amplicons']
-        taxonomy_l = []
+        for id_ in id_l:
+            taxonomy = amplicon_d_d[id_]['taxonomy']
+            try:
+                taxonomy = '; '.join(taxonomy['lineage']) # TODO allow missing taxonomies?
+            except KeyError:
+                raise NoTaxonomyException(msg_missingTaxonomy % id_)
+                
+            taxStr_l.append(taxonomy)
 
-        for amplicon_id in amplicon_id_l:
-            taxonomy = amplicon_d[amplicon_id]['taxonomy']['lineage'][:NUM_TAX_LVL]
-            taxonomy = '; '.join(taxonomy)
-            taxonomy_l.append(taxonomy)
-
-        return taxonomy_l
+        return taxStr_l
 
 
     def update_row_attributemapping_ref(self, row_attrmap_upa_new):
