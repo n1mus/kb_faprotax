@@ -1,0 +1,39 @@
+[%
+  page_title         = 'Functional Enrichment for GO terms';
+  table_id           = 'functional_enrichment_go-table';
+  data_file          = '/static/data/functional_enrichment.csv';
+  data_file_format   = 'csv';
+  include_datatables = 1;
+
+  PROCESS 'views/inc/macros.tt';
+  PROCESS 'views/inc/js.tt';
+  WRAPPER 'views/inc/page_wrapper.tt';
+
+    page_content = [
+      {
+        name    => 'Functional Enrichment',
+        name_lc => 'functional_enrichment_go',
+        content => 'table',
+        table_config => {
+          id                => table_id,
+          for_datatables_js => 1,
+        },
+      }
+    ];
+
+    tabbed_layout;
+
+    cols = [
+      { 'data' => 'term_id',            'title' => 'Term ID' },
+      { 'data' => 'term',               'title' => 'Description' },
+      { 'data' => 'ontology',           'title' => 'Ontology' },
+      { 'data' => 'num_in_feature_set', 'title' => 'Number in FeatureSet' },
+      { 'data' => 'num_in_ref_genome',  'title' => 'Number in Genome' },
+      { 'data' => 'raw_p_value',        'title' => 'Raw p-value' },
+      { 'data' => 'adjusted_p_value',   'title' => 'Corrected p-value' },
+    ];
+
+    PROCESS default_datatables_js;
+  END; # end page wrapper
+
+%]

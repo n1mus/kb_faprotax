@@ -12,7 +12,7 @@
     },
     "parameters": [ 
         {
-            "id": "amplicon_set_upa",
+            "id": "input_upa",
             "optional": false,
             "advanced": false,
             "allow_multiple": false,
@@ -29,7 +29,7 @@
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_type": ["KBaseExperiments.AmpliconSet", "KBaseMatrices.AmpliconMatrix"],
+                "valid_ws_type": ["KBaseExperiments.AmpliconSet"],
                 "is_output_name": true
             }
         }
@@ -47,8 +47,8 @@
                     "narrative_system_variable": "workspace_id",
                     "target_property": "workspace_id"
                 },{
-                    "input_parameter": "amplicon_set_upa",
-                    "target_property": "amplicon_set_upa",
+                    "input_parameter": "input_upa",
+                    "target_property": "input_upa",
                     "target_type_transform": "resolved-ref"
                 },{
                     "input_parameter": "output_amplicon_set_name",

@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
+from configparser import ConfigParser
 import os
 import logging
 import time
 import unittest
+from unittest.mock import patch, create_autospec
 import uuid
 import pandas as pd
 
-from configparser import ConfigParser
 from kb_faprotax.kb_faprotaxImpl import kb_faprotax
 from kb_faprotax.kb_faprotaxServer import MethodContext
 from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.DataFileUtilClient import DataFileUtil
+from installed_clients.KBaseReportClient import KBaseReport
 
 from kb_faprotax.util.error import *
 from kb_faprotax.util.message import *
@@ -21,35 +24,55 @@ from kb_faprotax.util.kbase_obj import AttributeMapping
 
 
 
+##################################
+##################################
+_17770 = '48666/2/9' # AmpliconSet containing 17770 entries
+first50 = "48402/9/2" # AmpliconSet containing first 50 of 17770 entries. row AttributeMapping has all 1770 entries (?)
+secret = '49926/6/1' # AmpliconSet from collaborator. No taxonomy or row AttributeMapping. Do not share
+secret_wRDP = '49926/9/3' # AmpliconSet from collaborator, with taxonomy and row AttributeMapping. Do not share
 
-_17770 = '48666/2/9'
-first50 = "48402/9/2"
-secret = '49926/6/1'
-secret_wRDP = '49926/9/3'
+refseq = '43623/61/2' # GenomeSet with RefSeq prokaryote reference genomes
+##################################
+##################################
 
 
-params_debug = {
-    'skip_obj': True,
-    'skip_run': True,
-    'skip_kbReport': True,
-    'return_test_info': True,
-    }
+
+
+
+mock_dfu = create_autospec(DataFileUtil, spec_set=True, instance=True)
+mock_kbr = create_autospec(KBaseReport, spec_set=True, instance=True)
+#mock_run_check
+
+
+def set_17770(mock_dfu):
+    mock_dfu.reset_mock(return_value=True, side_effect=True)
+    return mock_dfu
+
+
 
 
 class kb_faprotaxTest(unittest.TestCase):
 
-    def _test(self):
+####################################################################################################
+########################### GenomeSet input ########################################################
+####################################################################################################
+
+    #@patch('kb_faprotax.util.kbase_obj.Var.dfu', new=set_17770(mock_dfu))
+    def test_GenomeSet_input(self):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 **self.params_ws,
-                'amplicon_set_upa': secret_wRDP,
-                #**params_debug,
+                'input_upa': refseq,
                 }
             )
         return
    
 
-    def _test_attribute_and_source_exists(self):
+####################################################################################################
+########################## AmpliconSet input #######################################################
+####################################################################################################
+
+    def test_attribute_and_source_exists(self):
         pass
    
 
@@ -57,24 +80,24 @@ class kb_faprotaxTest(unittest.TestCase):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 **self.params_ws,
-                'amplicon_set_upa': secret_wRDP,
+                'input_upa': secret_wRDP,
             })
         
 
-    def _test_no_taxonomy_no_AttributeMapping(self):
+    def test_no_taxonomy_no_AttributeMapping(self):
         with self.assertRaises(NoTaxonomyException) as cm:
             ret = self.serviceImpl.faprotax(
                 self.ctx, {
                     **self.params_ws,
-                    'amplicon_set_upa': secret,
+                    'input_upa': secret,
                 })
             
 
-    def _test_against_reference(self):
+    def test_against_reference(self):
         ret = self.serviceImpl.faprotax(
             self.ctx, {
                 **self.params_ws,
-                'amplicon_set_upa': _17770,
+                'input_upa': _17770,
                 'return_test_info': True,
                 }
             )
@@ -82,7 +105,7 @@ class kb_faprotaxTest(unittest.TestCase):
         logging.info('Comparing traits in AttributeMapping to answers')
 
         # load AttributeMapping
-        row_attrmap = AttributeMapping(ret['objects_created'][0]['ref'])
+        row_attrmap = AttributeMapping(Var.objects_created[0]['ref'])
         instances_d = row_attrmap.obj['instances']
         attribute_d_l = row_attrmap.obj['attributes']
 
@@ -122,6 +145,8 @@ class kb_faprotaxTest(unittest.TestCase):
                   
 
 
+####################################################################################################
+
     @staticmethod
     def parse_answers_file():
         answers_flpth = '/kb/module/test/data/OTUMetaData_reduced.tsv'
@@ -131,6 +156,9 @@ class kb_faprotaxTest(unittest.TestCase):
         answers_d = {key: value['FAPROTAX Traits'] for key, value in answers_d.items()}
         return answers_d
 
+
+
+####################################################################################################
 
 
     @classmethod
@@ -170,15 +198,43 @@ class kb_faprotaxTest(unittest.TestCase):
         cls.scratch = cls.cfg['scratch']
         cls.callback_url = os.environ['SDK_CALLBACK_URL']
         suffix = int(time.time() * 1000)
-        cls.wsName = "test_ContigFilter_" + str(suffix)
+        cls.wsName = "test_kb_faprotax_" + str(suffix)
         ret = cls.wsClient.create_workspace({'workspace': cls.wsName})  # noqa
+
+    @classmethod
+    def list_tests(cls):
+        return [key for key, value in cls.__dict__.items() if type(key) == str and key.startswith('test') and callable(value)]
 
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, 'wsName'):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
-        test_names = [key for key, value in cls.__dict__.items() if type(key) == str and key.startswith('test') and callable(value)]
-        print('All tests:', test_names)
-        dec = '!!!' * 200
-        print(dec, "DON'T FORGET TO SEE DIFF", dec)
+        dec = '!!!' * 220
+        print(dec, "DON'T FORGET TO SEE DIFF, HTML", dec)
+        print('All tests:', cls.list_tests())
+
+
+
+
+############################ select what to run ####################################################
+'''
+When you just want to run certain tests,
+e.g., filter to tests in `run_tests`
+
+Comment out parts like `delattr` to deactivate
+'''
+AmpliconSet_tests = []
+GenomeSet_tests = ['test_GenomeSet_input']
+run_tests = ['test_against_reference']
+
+for key, value in kb_faprotaxTest.__dict__.copy().items():
+    if key.startswith('test') and callable(value):
+        if key not in run_tests:
+            delattr(kb_faprotaxTest, key)
+            pass
+
+
+
+
+

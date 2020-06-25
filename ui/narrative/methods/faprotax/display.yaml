@@ -23,11 +23,11 @@ suggestions:
 # Configure the display and description of parameters
 #
 parameters :
-    amplicon_set_upa :
+    input_upa :
         ui-name : |
-            AmpliconSet
+            Input object
         short-hint : |
-            Object of type <code>AmpliconSet</code>
+            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>
     output_amplicon_set_name:
         ui-name: |
             Output AmpliconSet name
