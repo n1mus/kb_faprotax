@@ -19,7 +19,7 @@
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_types": ["KBaseExperiments.AmpliconSet"]
+                "valid_ws_types": ["KBaseExperiments.AmpliconSet", "KBaseSearch.GenomeSet"]
             }
         },{
             "id": "output_amplicon_set_name",
@@ -29,7 +29,7 @@
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_type": ["KBaseExperiments.AmpliconSet"],
+                "valid_ws_type": ["KBaseExperiments.AmpliconSet", "KBaseSearch.GenomeSet"],
                 "is_output_name": true
             }
         }

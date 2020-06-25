@@ -316,7 +316,7 @@ def do_AmpliconSet_workflow():
     #if params.get('skip_run'):
     #    groups2records_table_dense_flpth = '/kb/module/test/data/faprotax_output/groups2records_dense.tsv'
 
-    objects_created = []
+    Var.objects_created = [] # TODO get this from return
     if amp_mat.row_attrmap_upa:
 
         attribute = 'FAPROTAX Traits'
@@ -333,7 +333,7 @@ def do_AmpliconSet_workflow():
         amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
         amp_set_upa_new = amp_set.save(name=Var.params.get('output_amplicon_set_name'))
         
-        objects_created = [
+        Var.objects_created = [
             {'ref': row_attrmap_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
             {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
             {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
@@ -357,7 +357,7 @@ def do_AmpliconSet_workflow():
 
     params_report = {
         'warnings': Var.warnings,
-        'objects_created': objects_created,
+        'objects_created': Var.objects_created,
         'file_links': file_links,
         'report_object_name': 'kb_faprotax_report',
         'workspace_id': Var.params['workspace_id'],
