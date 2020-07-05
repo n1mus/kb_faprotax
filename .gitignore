@@ -2,4 +2,5 @@ test_local
 test.cfg
 .*.sw[a-z]
 *.py.bak*
-sdk.cfg
+__pycache__
+*.pyc

@@ -31,14 +31,21 @@ def run_check(cmd):
 
     if completed_proc.returncode != 0:
         msg = (
-"FAPROTAX command `%s` returned with non-zero return code `%d`. Please check logs for more details")
+"FAPROTAX command `%s` returned with non-zero return code `%d`. Please check logs for more details" % (cmd, completed_proc.returncode))
         raise NonZeroReturnException(msg)
 
 
 
 ####################################################################################################
-def parse_faprotax_traits(groups2records_table_dense_flpth, dlm=',') -> dict:
+def parse_faprotax_functions(groups2records_table_dense_flpth, dlm=',') -> dict:
     '''
+    In FAPROTAX, a taxonomic path is also known as a 'record', and a
+    function is also known as a 'group'.
+
+    The input is a filepath for grouops2records_dense.tsv, which is one of
+    the outputs from FAPROTAX. Basically, its index is the records, its columns
+    are the groups, and its values are nonnegative floats
+
     Input: filepath for groups2records_dense.tsv
     Output: dict map from taxonomy to predicted functions
     '''
@@ -48,7 +55,7 @@ def parse_faprotax_traits(groups2records_table_dense_flpth, dlm=',') -> dict:
     r2g_d = g2r_df.to_dict(orient='index')
     r2g_d = {record: r2g_d[record]['group'] for record in r2g_d}
     if dlm != ',': 
-        r2g_d = {record: groups.replace(',', dlm) for record, groups in r2g_d.items()}
+        r2g_d = {record: group.replace(',', dlm) for record, group in r2g_d.items()}
 
     return r2g_d
 
@@ -67,8 +74,6 @@ def do_GenomeSet_workflow():
     ####
     #####
 
-    logging.info('Loading GenomeSet or Genome data')
-
     gs = GenomeSet(Var.params['input_upa'])
     
 
@@ -84,7 +89,7 @@ def do_GenomeSet_workflow():
     # and not necessary
     # just keep them for debugging purposes
 
-    otu_table_flpth = os.path.join(Var.return_dir, 'OTU_table_1s.tsv')
+    otu_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
     gs.to_OTU_table(otu_table_flpth)
 
     log_flpth = os.path.join(Var.return_dir, 'log.txt')
@@ -105,6 +110,7 @@ def do_GenomeSet_workflow():
 
 
     cmd = ' '.join([
+        'set -o pipefail &&',
         Var.cmd_flpth,
         '--input_table', otu_table_flpth,
         '--input_groups_file', Var.db_flpth,
@@ -115,7 +121,7 @@ def do_GenomeSet_workflow():
         '--out_groups2records_table_dense', groups2records_table_dense_flpth,
         '--out_group_overlaps', group_overlaps_flpth,
         '--out_group_definitions_used', group_definitions_used_flpth,
-        '--row_names_are_in_column OTU',
+        '--row_names_are_in_column', 'taxonomy',
         '--verbose',
         '|& tee', log_flpth
     ])
@@ -144,9 +150,9 @@ def do_GenomeSet_workflow():
     #####
 
 
-    taxStr_2_traits_d = parse_faprotax_traits(groups2records_table_dense_flpth) # parse FAPROTAX results
+    tax2functions_d = parse_faprotax_functions(groups2records_table_dense_flpth, dlm=', ') # parse FAPROTAX results
 
-    gs.df['functions'] = gs.df.apply(lambda row: taxStr_2_traits_d.get(row['taxonomy'], np.nan), axis=1) # stitch FAPROTAX results onto GenomeSet df
+    gs.df['functions'] = gs.df.apply(lambda row: tax2functions_d.get(row['taxonomy'], np.nan), axis=1) # stitch FAPROTAX results onto GenomeSet df
 
 
     dprint('gs.df', run=locals())
@@ -160,7 +166,7 @@ def do_GenomeSet_workflow():
     df = gs.df
     df['genome name'] = df.apply(lambda row: '<a href="%s" target="_blank">%s</a>' % (row['url'], row['name']), axis=1) # add column of Genome name linking to landing page
     df = df[['genome name', 'taxonomy', 'functions']] # filter to final columns
-    df.columns = ['Genome Name', 'Taxonomy', 'FAPROTAX Functions'] # capitalize properly
+    df.columns = ['Genome Workspace Name', 'Taxonomy', 'FAPROTAX Functions'] # capitalize properly
     columns = [{'title': col} for col in df.columns.tolist()] # format for DataTables
     lines = df.values.tolist() # format for DataTables
     
@@ -229,13 +235,14 @@ def do_AmpliconSet_workflow():
     ####
     #####
 
-    logging.info('Loading AmpliconSet and AmpliconMatrix')
-
     amp_set = AmpliconSet(Var.params['input_upa'])
-    amp_mat = AmpliconMatrix(amp_set.get_amplicon_matrix_upa(), amp_set) 
+    amp_mat = AmpliconMatrix(amp_set.amp_mat_upa, amp_set)
+
+    amp_mat.to_OTU_table()
+
     if amp_mat.row_attrmap_upa:
-        logging.info('Loading row AttributeMapping')
         row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
+        
     else:
         msg = (
 "Input AmpliconSet's associated AmpliconMatrix does not have a row AttributeMapping object to assign traits to. "
@@ -257,6 +264,9 @@ def do_AmpliconSet_workflow():
     log_flpth = os.path.join(Var.return_dir, 'log.txt')
     cmd_flpth = os.path.join(Var.return_dir, 'cmd.txt')
 
+    taxon_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
+    amp_mat.to_OTU_table(taxon_table_flpth)
+
     out_dir = os.path.join(Var.return_dir, 'faprotax_output')
     sub_tables_dir = os.path.join(out_dir, 'sub_tables')
 
@@ -274,7 +284,7 @@ def do_AmpliconSet_workflow():
     cmd = ' '.join([
         'set -o pipefail &&',
         Var.cmd_flpth,
-        '--input_table', amp_mat.taxon_table_flpth,
+        '--input_table', taxon_table_flpth,
         '--input_groups_file', Var.db_flpth,
         '--out_collapsed', func_table_flpth,
         '--out_report', report_flpth,
@@ -300,9 +310,9 @@ def do_AmpliconSet_workflow():
     ####
     #####
 
-
-
     run_check(cmd)
+
+
 
 
     #
@@ -312,19 +322,18 @@ def do_AmpliconSet_workflow():
     #####
 
 
-    ### just don't patch running for now?
-    #if params.get('skip_run'):
-    #    groups2records_table_dense_flpth = '/kb/module/test/data/faprotax_output/groups2records_dense.tsv'
 
     Var.objects_created = [] # TODO get this from return
     if amp_mat.row_attrmap_upa:
 
-        attribute = 'FAPROTAX Traits'
-        source = 'kb_faprotax/faprotax'
+        attribute = 'FAPROTAX Functions'
+        source = 'kb_faprotax/run_FAPROTAX'
 
-        taxStr_2_traits_d = parse_faprotax_traits(groups2records_table_dense_flpth)
+        tax2functions_d = parse_faprotax_functions(groups2records_table_dense_flpth)
+        id2functions_d = amp_set.get_id2functions_d(tax2functions_d) # amp_set has id-tax map
+
         ind = row_attrmap.add_attribute_slot(attribute, source)
-        row_attrmap.update_attribute(ind, taxStr_2_traits_d, amp_set) # AmpliconSet is the rosetta stone between taxStr and traits (supplies id)
+        row_attrmap.update_attribute(ind, id2functions_d)
         row_attrmap_upa_new = row_attrmap.save()
 
         amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
@@ -370,6 +379,8 @@ def do_AmpliconSet_workflow():
         'report_name': report_output['name'],
         'report_ref': report_output['ref'],
     }
+
+    dprint('output', run=locals())
 
     return [output]
 

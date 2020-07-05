@@ -3,14 +3,12 @@ import logging
 import pandas as pd
 import numpy as np
 from urllib.parse import urlparse
+import json
 
 from .dprint import dprint
 from .varstash import Var
 from .error import *
 from .message import *
-
-
-
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
@@ -18,7 +16,14 @@ pd.set_option('display.width', 1000)
 pd.set_option('display.max_colwidth', 20)
 
 
-
+def write_json(obj, flnm):
+    '''
+    For debugging/testing
+    '''
+    if isinstance(Var.run_dir, str):
+        flpth = os.path.join(Var.run_dir, flnm)
+        with open(flpth, 'w') as f:
+            json.dump(obj, f)
 
 
 ####################################################################################################
@@ -36,7 +41,6 @@ class GenomeSet:
             'object_refs': [upa]
         })
 
-        
         self.name = obj['data'][0]['info'][1]
         obj = obj['data'][0]['data']
 
@@ -53,6 +57,11 @@ class GenomeSet:
             genome_element_l.append((upa, data, metadata))
 
         num_genomes = len(genome_element_l)
+
+        # check for duplicate upas
+        upa_l = [genome_element[0] for genome_element in genome_element_l if genome_element[0] != None]
+        if len(set(upa_l)) < len(upa_l):
+            Var.warnings.append(msg_dupGenomes)
 
         # sort out which Genomes came as upas, which came as data
         ind_upa = [i for i in range(len(genome_element_l)) if genome_element_l[i][0] != None]
@@ -109,15 +118,27 @@ class GenomeSet:
         self.df = df
 
 
-    def to_OTU_table(self, flpth):
+    def to_OTU_table(self, flpth, dummy_val=1.0):
         '''
         Write OTU table with dummy values
+        `dummy_value` can be nonnegative number, or `'random'`
+        '''
+        df = self.df.copy()[['taxonomy']] 
+        if dummy_val == 'random':
+            df['dummy_sample'] = np.random.random(len(df)) + 0.01 # unif[0.01, 1.01)
+        elif dummy_val > 0:
+            df['dummy_sample'] = [dummy_val] * len(df)
+        else:
+            raise Exception('`dummy_val` must be gt 0')
+
+        df.to_csv(flpth, sep='\t', float_format='%.1f', index=False)
+        
         '''
         with open(flpth, 'w') as f: # TODO use `to_csv`?
             f.write('OTU\tdummy_sample\n')
             for index, row in self.df.iterrows():
                 f.write('%s\t1.0\n' % row['taxonomy'])
-                
+        '''        
             
 
 
@@ -127,6 +148,15 @@ class GenomeSet:
 class Genome:
 
     def __init__(self, upa, data, metadata, oi):
+        '''
+        Instance variables created at init time:
+        * upa
+        * data
+        * name
+        * taxonomy
+        * sci_name
+        * domain
+        '''
         dprint('upa', 'data', 'metadata', run=locals())
 
         self.upa = upa
@@ -141,6 +171,7 @@ class Genome:
             self.domain = oi[-1]['Domain']
 
         # Genome by embedded `data`
+        # TODO improve
         elif data != None and oi == None:
             Var.warnings.append(\
 "Genome is defined in GenomeSet rather than its own KBaseGenomes.Genome object.")
@@ -153,26 +184,6 @@ class Genome:
 
         else:
             raise Exception('Either `upa` and `oi` xor `data` should be valid')
-
-
-    @property
-    def best_taxonomy(self) -> tuple:
-        '''
-        Experimental. 
-        This is beyond the scope of this program.
-        It requires deciding which of various possible taxonomies is best
-        '''
-        # has something for taxonomy
-        if self.taxonomy != None:
-            return self.taxonomy, 'taxonomy'
-
-        # get taxon
-
-            #return , 'relation engine'
-
-        # return what is required
-        else:
-            return self.domain + ';' + self.sci_name, 'domain and scientific name'
 
     @property
     def landing_url(self):
@@ -188,22 +199,90 @@ class Genome:
 class AmpliconSet:
 
     def __init__(self, upa):
+        '''
+        Instance variables created at init time:
+        * upa
+        * name
+        * amp_mat_upa
+        * obj
+        '''
         self.upa = upa
         self._get_obj()
 
 
     def _get_obj(self):
+        logging.info('Loading object info for AmpliconSet `%s`' % self.upa)
+
         obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
-            })
+        })
+
+        if Var.debug: write_json(obj, 'get_objects_AmpliconSet.json')
 
         self.name = obj['data'][0]['info'][1]
-        self.amp_mat_upa = obj['data'][0]['data']['amplicon_matrix_ref']
         self.obj = obj['data'][0]['data']
+        self.amp_mat_upa = self.obj['amplicon_matrix_ref']
 
 
-    def get_amplicon_matrix_upa(self):
-        return self.amp_mat_upa
+    @staticmethod
+    def _concat_tax(tax: list):
+        return '; '.join(tax)
+
+        
+    def get_taxStr_l(self, id_l: list): # TODO allow missing taxonomies? 
+        '''
+        Given `id_l`, return corresponding `taxStr_l`
+        '''
+        amplicons_d = self.obj['amplicons']
+        taxStr_l = []
+
+        for id in id_l:
+            taxonomy_d = amplicons_d[id]['taxonomy']
+            
+            if 'lineage' not in taxonomy_d: # TODO disallow `'lineage': {}`?
+                raise NoTaxonomyException(msg_missingTaxonomy % id)
+
+            taxStr = self._concat_tax(taxonomy_d['lineage'])   
+            taxStr_l.append(taxStr)
+
+        return taxStr_l
+
+
+    def _get_tax2ids_d(self):
+        '''
+        Taxonomy is a string, ids is a list
+        '''
+        tax2ids_d = {}
+
+        for id, amplicon_d in self.obj['amplicons'].items():
+            tax = self._concat_tax(amplicon_d['taxonomy']['lineage'])
+            if tax in tax2ids_d:
+                tax2ids_d[tax].append(id)
+            else:
+                tax2ids_d[tax] = [id]
+
+        return tax2ids_d
+
+
+    def get_id2functions_d(self, tax2functions_d: dict): 
+        '''
+        AmpliconSet has id-tax mapping
+
+        Taxonomies and functions are both strings
+        `tax2functions_d` is computed from FAPROTAX output
+
+        Goal:
+        [tax2functions]-------[using-tax2ids]-------->[id2functions]
+        '''
+        id2functions_d = {}
+        tax2ids_d = self._get_tax2ids_d()
+
+        for tax, functions in tax2functions_d.items():
+            for id in tax2ids_d[tax]:
+                id2functions_d[id] = functions
+
+        return id2functions_d
+
 
 
     def update_amplicon_matrix_ref(self, amp_mat_upa_new):
@@ -217,7 +296,7 @@ class AmpliconSet:
             "objects": [{
                 "type": "KBaseExperiments.AmpliconSet",
                 "data": self.obj,
-                "name": name if name else self.name,
+                "name": name if name != None else self.name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -232,26 +311,42 @@ class AmpliconSet:
 ####################################################################################################
 class AmpliconMatrix:
 
-    def __init__(self, upa, amp_set: AmpliconSet, test=False):
+    def __init__(self, upa, amp_set: AmpliconSet):
+        '''
+        Instance variables created during init:
+        * upa
+        * amp_set - referring AmpliconSet object
+        * name
+        * obj
+        * row_attrmap_upa
+        '''
         self.upa = upa
         self.amp_set = amp_set
-        self.test = test
 
         self._get_obj()
-        self._to_OTU_table()
 
 
     def _get_obj(self):
+        logging.info('Loading object info for AmpliconMatrix `%s`' % self.upa)
+
         obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
-            })
+        })
+
+        if Var.debug: write_json(obj, 'get_objects_AmpliconMatrix.json')
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
-        self.row_attrmap_upa = self.obj.get('row_attributemapping_ref') 
+        self.row_attrmap_upa = self.obj.get('row_attributemapping_ref') # optional field
 
 
-    def _to_OTU_table(self):
+    def to_OTU_table(self, flpth=None):
+        '''
+        `taxonomy` is index
+        `OTU_Id` is first column
+
+        Return for testing
+        '''
 
         logging.info(f"Parsing AmpliconMatrix data from object")
 
@@ -259,37 +354,19 @@ class AmpliconMatrix:
         row_ids = self.obj['data']['row_ids']
         col_ids = self.obj['data']['col_ids']
 
-        data = pd.DataFrame(
+        df = pd.DataFrame(
             data, 
-            index=self._get_taxStr_l(row_ids), 
+            index=self.amp_set.get_taxStr_l(row_ids), 
             columns=col_ids
             )
-        data.index.name = "taxonomy"
-        data['OTU_Id'] = row_ids # TODO get rid of this? doesn't help
-        data = data[['OTU_Id'] + col_ids]
+        df.index.name = "taxonomy"
+        df['OTU_Id'] = row_ids # add OTU_Id for identification purposes (?)
+        df = df[['OTU_Id'] + col_ids] # reorder
 
-        if self.test:
-            data = data.iloc[:50]
+        if flpth != None:
+            df.to_csv(flpth, sep='\t')
 
-        self.taxon_table_flpth = os.path.join(Var.run_dir, 'taxon_table.tsv')
-
-        data.to_csv(self.taxon_table_flpth, sep='\t')
-
-        
-    def _get_taxStr_l(self, id_l):
-        amplicon_d_d = self.amp_set.obj['amplicons']
-        taxStr_l = []
-
-        for id_ in id_l:
-            taxonomy = amplicon_d_d[id_]['taxonomy']
-            try:
-                taxonomy = '; '.join(taxonomy['lineage']) # TODO allow missing taxonomies?
-            except KeyError:
-                raise NoTaxonomyException(msg_missingTaxonomy % id_)
-                
-            taxStr_l.append(taxonomy)
-
-        return taxStr_l
+        return df
 
 
     def update_row_attributemapping_ref(self, row_attrmap_upa_new):
@@ -297,7 +374,6 @@ class AmpliconMatrix:
 
 
     def save(self):
-
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
             "objects": [{
@@ -314,54 +390,41 @@ class AmpliconMatrix:
 
 
 
-
-
-
 ####################################################################################################
 ####################################################################################################
 class AttributeMapping:
 
     def __init__(self, upa):
+        '''
+        Instance variables created at init time:
+        * upa
+        * name
+        * obj
+        '''
         self.upa = upa
         self._get_obj()
 
 
     def _get_obj(self):
+        logging.info('Loading object info for AttributeMapping `%s`' % self.upa)
+
         obj = Var.dfu.get_objects({
             'object_refs': [self.upa]
-            })
+        })
+
+        if Var.debug: write_json(obj, 'get_objects_AttributeMapping.json')
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
 
 
 
-
-    def update_attribute(self, ind: int, taxStr_2_traits_d: dict, amp_set):
+    def update_attribute(self, ind: int, id2attr_d: dict):
         '''
-        Update attribute at index `ind`
-        
-        taxStr -> amplicon ids -> instances to insert traits
+        Update attribute at index `ind` using mapping `id2attr_d`
         '''
-
-        # taxStr -> amplicon ids
-
-        taxStr_2_ids_d = {}
-
-        for id_, amplicon_d in amp_set.obj['amplicons'].items():
-            taxStr = '; '.join(amplicon_d['taxonomy']['lineage'])
-            if taxStr in taxStr_2_ids_d:
-                taxStr_2_ids_d[taxStr].append(id_)
-            else:
-                taxStr_2_ids_d[taxStr] = [id_]
-
-        dprint('taxStr_2_ids_d', run=locals())
-        
-        # taxStr -> amplicon ids -> instances to insert traits
-        
-        for taxStr, traits in taxStr_2_traits_d.items():
-            for id_ in taxStr_2_ids_d.get(taxStr, []):
-                self.obj['instances'][id_][ind] = traits
+        for id, attr in id2attr_d.items():
+            self.obj['instances'][id][ind] = attr
 
 
     def add_attribute_slot(self, attribute, source) -> int:
@@ -372,8 +435,8 @@ class AttributeMapping:
         
         # check if already exists
         for ind, attr_d in enumerate(self.obj['attributes']):
-            if attr_d['attribute'] == attribute: # TODO check if same source for identity
-                msg = msg_overwriteAttribute % (attribute, self.name)
+            if attr_d['attribute'] == attribute and attr_d['source'] == source:
+                msg = msg_overwriteAttribute % (attribute, source, self.name)
                 logging.warning(msg)
                 Var.warnings.append(msg)
                 return ind

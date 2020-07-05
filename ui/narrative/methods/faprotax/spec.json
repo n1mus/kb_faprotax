@@ -29,7 +29,7 @@
             "default_values": [ "" ],
             "field_type": "text",
             "text_options": {
-                "valid_ws_type": ["KBaseExperiments.AmpliconSet", "KBaseSearch.GenomeSet"],
+                "valid_ws_type": ["KBaseExperiments.AmpliconSet"],
                 "is_output_name": true
             }
         }
@@ -38,7 +38,7 @@
         "service-mapping": {
             "url": "",
             "name": "kb_faprotax",
-            "method": "faprotax",
+            "method": "run_FAPROTAX",
             "input_mapping": [
                 {
                     "narrative_system_variable": "workspace",

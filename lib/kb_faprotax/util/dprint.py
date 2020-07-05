@@ -1,17 +1,40 @@
 import functools
-import pprint, json
+import json
 import subprocess
 import sys
 import os
 import time
-import logging
+import inspect
+import time as time_
 
+from .varstash import Var
+
+
+subproc_run = functools.partial(
+    subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
+
+TAG_WIDTH = 80
 MAX_LINES = 70
-subprocess.run = functools.partial(
-        subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
 
-# TODO time, where
-def dprint(*args, run=False, max_lines=MAX_LINES, subproc_run_kwargs={}, print_kwargs={}):
+
+def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=False, subproc_run_kwargs={}, print_kwargs={}):
+    """
+    For debug printing
+    Also executes shell/python commands, printing the command and the outcome
+
+    Input:
+        args - strings, which can be evaluated with Bash or as python
+        run - `shell` or `cli` if the `args` are for Bash, or a namespace dictionary if `args` are 
+            python code
+        where - include information (file, function, line) about the calling stack frame
+        time - include how long it took to process each of `args`
+        max_lines - limit how many lines to print (this will be json format)
+        exit - exit after printing (for debugging)
+    """
+
+    if not Var.debug:
+        return
+
     print = functools.partial(__builtins__['print'], **print_kwargs)
 
     def print_format(arg):
@@ -21,14 +44,21 @@ def dprint(*args, run=False, max_lines=MAX_LINES, subproc_run_kwargs={}, print_k
                 arg_json = '\n'.join(arg_json.split('\n')[0:max_lines] + ['...'])
             print(arg_json)
         else:
-            print(arg, end=' ')
+            print(arg)
 
-    print('##############################################################')
+    print('#' * TAG_WIDTH)
+
+    if where:
+        last_frame = inspect.stack()[1]
+        print("(file `%s`)\n(func `%s`)\n(line `%d`)" % (os.path.basename(last_frame[1]), last_frame[3], last_frame[2]))
+    
     for arg in args:
+        if time:
+            t0 = time_.time()
         if run:
             print('>> ' + arg)
             if run in ['cli', 'shell']:
-                completed_proc = subprocess.run(arg, **subproc_run_kwargs)
+                completed_proc = subproc_run(arg, **subproc_run_kwargs)
                 retcode = completed_proc.returncode
             elif isinstance(run, dict):
                 print_format(eval(arg, run))
@@ -36,16 +66,27 @@ def dprint(*args, run=False, max_lines=MAX_LINES, subproc_run_kwargs={}, print_k
                 assert False
         else:
             print_format(arg)
-        print()
-    print('--------------------------------------------------------------')
-    # return last run
+        if time:
+            t = time_.time() - t0
+            print('[%fs]' % t)
+    
+    print('-' * TAG_WIDTH)
+
+    if exit == True:
+        sys.exit(0)
+    
+    # return last retcode
     if run and run in ['cli', 'shell']:
         return retcode
 
-# TODO
+
 def where_am_i(f):
-    '''
-    Decorator
-    '''
-    dprint("where am i? in module " + globals()['__name__'] + " method " + f.__qualname__)
-    return f
+    '''Decorator'''
+    def f_new(*args, **kwargs):
+        dprint("where am i?\n(func `%s`)" % (f.__qualname__), where=False)
+        f(*args, **kwargs)
+    return f_new
+
+
+
+

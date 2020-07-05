@@ -11,6 +11,6 @@ module kb_faprotax {
     /*
         This example function accepts any number of parameters and returns results in a KBaseReport
     */
-    funcdef faprotax(mapping<string,UnspecifiedObject> params) returns (ReportResults output) authentication required;
+    funcdef run_FAPROTAX(mapping<string,UnspecifiedObject> params) returns (ReportResults output) authentication required;
 
 };

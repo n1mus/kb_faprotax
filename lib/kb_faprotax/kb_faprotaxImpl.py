@@ -16,7 +16,7 @@ from installed_clients.WorkspaceClient import Workspace
 
 from .util.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
 from .util.dprint import dprint
-from .util.varstash import Var, reset # `Var` holds globals, `reset` clears everything but `Var.debug`
+from .util.varstash import Var, reset # `Var` holds globals, `reset` clears everything but config stuff
 from .util.workflow import do_AmpliconSet_workflow, do_GenomeSet_workflow
 
 
@@ -40,7 +40,7 @@ class kb_faprotax:
     ######################################### noqa
     VERSION = "0.0.1"
     GIT_URL = "https://github.com/n1mus/kb_faprotax"
-    GIT_COMMIT_HASH = "9a891976114f6e5cb6d5500a66f9cb333a7f36b3"
+    GIT_COMMIT_HASH = "24efa7938f23c8343cac4a8accc754e2e625165b"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -49,28 +49,24 @@ class kb_faprotax:
     # be found
     def __init__(self, config):
         #BEGIN_CONSTRUCTOR
+
+        logging.basicConfig(format='%(created)s %(levelname)s: %(message)s', level=logging.INFO)
+
         self.callback_url = os.environ['SDK_CALLBACK_URL']
         self.shared_folder = config['scratch']
-        logging.basicConfig(format='%(created)s %(levelname)s: %(message)s',
-                            level=logging.INFO)
+        self.workspace_url = config['workspace-url']
 
-        self.Var = {
-            'shared_folder': self.shared_folder,
-            'callback_url': self.callback_url,
+        self.Var = { # carry over into globals `Var`, regardless of resetting, for all API-method runs
             'kbase_endpoint': config['kbase-endpoint'], # contains environment, for constructing Genome landing page url
-            'dfu': DataFileUtil(self.callback_url),
-            'ws': Workspace(config['workspace-url']),
-            'kbr': KBaseReport(self.callback_url, service_ver='dev'),
-            'db_flpth': '/kb/module/data/FAPROTAX.txt', # curated database file for FAPROTAX
-            'cmd_flpth': '/opt/FAPROTAX_1.2.1/collapse_table.py', # FAPROTAX executable
             'template_flpth': '/kb/module/ui/template/edge_data.tt',
         }
-
+        
 
         #END_CONSTRUCTOR
+        pass
 
 
-    def faprotax(self, ctx, params):
+    def run_FAPROTAX(self, ctx, params):
         """
         This example function accepts any number of parameters and returns results in a KBaseReport
         :param params: instance of mapping from String to unspecified object
@@ -79,7 +75,7 @@ class kb_faprotax:
         """
         # ctx is the context object
         # return variables are: output
-        #BEGIN faprotax
+        #BEGIN run_FAPROTAX
     
 
         #
@@ -92,8 +88,11 @@ class kb_faprotax:
 
         Var.update({ 
             **self.Var,
+            'ws': Workspace(self.workspace_url),
+            'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
+            'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
             'params': params,
-            'run_dir': os.path.join(self.Var['shared_folder'], str(uuid.uuid4())),
+            'run_dir': os.path.join(self.shared_folder, str(uuid.uuid4())),
             'warnings': [],
         })
 
@@ -106,6 +105,7 @@ class kb_faprotax:
         os.mkdir(Var.return_dir)
 
 
+
         #
         ##
         ### detect input type
@@ -115,8 +115,6 @@ class kb_faprotax:
 
         oi = Var.ws.get_object_info3({'objects': [{'ref': params['input_upa']}]})['infos'][0]
 
-        dprint('oi', run=locals())
-        
         if oi[2].startswith('KBaseSearch.GenomeSet'):
             return do_GenomeSet_workflow()
 
@@ -129,11 +127,11 @@ class kb_faprotax:
 
 
 
-        #END faprotax
+        #END run_FAPROTAX
 
         # At some point might do deeper type checking...
         if not isinstance(output, dict):
-            raise ValueError('Method faprotax return value ' +
+            raise ValueError('Method run_FAPROTAX return value ' +
                              'output is not type dict as required.')
         # return the results
         return [output]

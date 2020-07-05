@@ -1,11 +1,14 @@
 from dotmap import DotMap
 
 
-DEBUG = True # toggle for global debugging behavior
+_config = DotMap({
+    'debug': True, # toggle for global debugging behavior
+    'db_flpth': '/kb/module/data/FAPROTAX.txt', # curated database file for FAPROTAX
+    'cmd_flpth': '/opt/FAPROTAX_1.2.1/collapse_table.py', # FAPROTAX executable
+})
 
-Var = DotMap(debug=DEBUG)
 
+def reset(dm: DotMap=None):
+    return DotMap(_config)
 
-def reset(dm: DotMap):
-    dm.clear()
-    dm.update(debug=DEBUG)
+Var = reset()
