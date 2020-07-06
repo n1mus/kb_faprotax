@@ -1,5 +1,3 @@
-
-
 class NoTaxonomyException(Exception):
     pass
 

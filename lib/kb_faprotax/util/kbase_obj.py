@@ -16,14 +16,22 @@ pd.set_option('display.width', 1000)
 pd.set_option('display.max_colwidth', 20)
 
 
-def write_json(obj, flnm):
+def write_json(obj, flnm, AmpliconSet=False):
     '''
     For debugging/testing
     '''
-    if isinstance(Var.run_dir, str):
-        flpth = os.path.join(Var.run_dir, flnm)
-        with open(flpth, 'w') as f:
-            json.dump(obj, f)
+    if 'run_dir' not in Var:
+        import uuid
+        Var.run_dir = os.path.join('/kb/module/work/tmp', str(uuid.uuid4()))
+        os.mkdir(Var.run_dir)
+
+    flpth = os.path.join(Var.run_dir, flnm)
+    with open(flpth, 'w') as f:
+        json.dump(obj, f)
+
+    if AmpliconSet == True:
+        dprint('touch %s' % os.path.join(Var.run_dir, '#' + obj['data'][0]['info'][1]), run='cli') # annotate run_dir with name
+
 
 
 ####################################################################################################
@@ -217,7 +225,7 @@ class AmpliconSet:
             'object_refs': [self.upa]
         })
 
-        if Var.debug: write_json(obj, 'get_objects_AmpliconSet.json')
+        if Var.debug: write_json(obj, 'get_objects_AmpliconSet.json', AmpliconSet=True)
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
@@ -345,7 +353,8 @@ class AmpliconMatrix:
         `taxonomy` is index
         `OTU_Id` is first column
 
-        Return for testing
+        This interface is used for testing
+        Return df for testing
         '''
 
         logging.info(f"Parsing AmpliconMatrix data from object")

@@ -40,7 +40,7 @@ def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=
     def print_format(arg):
         if isinstance(arg, (dict, list)):
             arg_json = json.dumps(arg, indent=3, default=str)
-            if arg_json.count('\n') > max_lines:
+            if max_lines != None and max_lines != False and arg_json.count('\n') > max_lines:
                 arg_json = '\n'.join(arg_json.split('\n')[0:max_lines] + ['...'])
             print(arg_json)
         else:

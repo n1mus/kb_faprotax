@@ -16,7 +16,7 @@ from installed_clients.WorkspaceClient import Workspace
 
 from .util.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
 from .util.dprint import dprint
-from .util.varstash import Var, reset # `Var` holds globals, `reset` clears everything but config stuff
+from .util.varstash import Var, reset_Var # `Var` holds globals, `reset` clears everything but config stuff
 from .util.workflow import do_AmpliconSet_workflow, do_GenomeSet_workflow
 
 
@@ -57,6 +57,7 @@ class kb_faprotax:
         self.workspace_url = config['workspace-url']
 
         self.Var = { # carry over into globals `Var`, regardless of resetting, for all API-method runs
+            'shared_folder': config['scratch'],
             'kbase_endpoint': config['kbase-endpoint'], # contains environment, for constructing Genome landing page url
             'template_flpth': '/kb/module/ui/template/edge_data.tt',
         }
@@ -84,7 +85,7 @@ class kb_faprotax:
         ####
         #####
 
-        reset(Var) # reset globals for this API method run
+        reset_Var() # reset globals for this API method run
 
         Var.update({ 
             **self.Var,

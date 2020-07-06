@@ -1,5 +1,8 @@
 from dotmap import DotMap
 
+'''
+App globals and config
+'''
 
 _config = DotMap({
     'debug': True, # toggle for global debugging behavior
@@ -7,8 +10,8 @@ _config = DotMap({
     'cmd_flpth': '/opt/FAPROTAX_1.2.1/collapse_table.py', # FAPROTAX executable
 })
 
+Var = DotMap(_config) # globals for app
 
-def reset(dm: DotMap=None):
-    return DotMap(_config)
-
-Var = reset()
+def reset_Var():
+    Var.clear()
+    Var.update(_config)

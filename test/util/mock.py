@@ -63,9 +63,9 @@ def get_mock_dfu(dataset):
 
         upa = params['object_refs'][0]
         flnm = {
-            enigma17770: 'get_objects_AmpliconSet.json',
-            enigma17770_AmpMat: 'get_objects_AmpliconMatrix.json',
-            enigma17770_AttrMap: 'get_objects_AttributeMapping.json',
+            _17770: 'get_objects_AmpliconSet.json',
+            _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
+            _17770_AttrMap: 'get_objects_AttributeMapping.json',
             secret: 'get_objects_AmpliconSet.json',
             secret_AmpMat: 'get_objects_AmpliconMatrix.json',
             }[upa]

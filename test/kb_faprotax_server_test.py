@@ -6,7 +6,8 @@ import time
 import unittest
 import uuid
 import pandas as pd
-from shutil import rmtree, copytree
+import numpy as np
+from shutil import rmtree, copytree # TODO compress test files
 import json
 from unittest.mock import patch
 import pandas as pd
@@ -21,22 +22,30 @@ from installed_clients.WorkspaceClient import Workspace
 from kb_faprotax.util.error import * # exception library
 from kb_faprotax.util.message import * # warning/exception messages library
 from kb_faprotax.util.dprint import dprint, where_am_i
-from kb_faprotax.util.varstash import Var # dict-like dot-access globals
+from kb_faprotax.util.varstash import Var # dict-like dot-access app globals
 from kb_faprotax.util.kbase_obj import GenomeSet, Genome, AmpliconSet, AmpliconMatrix, AttributeMapping
 from util.mock import * # mock business
 from util.upa import * # upa library
 
 
 
-
+# TODO allow toggling patching as much as possible, i.e., for unit testing 
+# TODO dummy test datasets (to file) = less file io (slow?) ... leave big datasets for ?
 
 ######################################
 ######################################
 ######### TOGGLE PATCH ###############
 ######################################
-######################################
-patch_ = patch; patch_dict_ = patch.dict
-#patch_ = lambda *args, **kwargs: lambda f: f; patch_dict_ = lambda *args, **kwargs: lambda f: f
+###################################### 
+do_patch = True
+
+if do_patch:
+    patch_ = patch
+    patch_dict_ = patch.dict
+
+else:
+    patch_ = lambda *args, **kwargs: lambda f: f
+    patch_dict_ = lambda *args, **kwargs: lambda f: f
 ######################################
 ######################################
 ######################################
@@ -158,11 +167,8 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             self.assertTrue(combo[0] == combo[1])
 
  
+    # TODO superficially test ctor
     def test_GenomeSet_methods(self):
-        '''
-        GenomeSet methods are quite simple, 
-        they are tested in other places
-        '''
         pass
        
 
@@ -188,8 +194,21 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 ####################################################################################################
 ########################## AmpliconSet input #######################################################
 ####################################################################################################
+    '''
+    Because of the control flow of testing,
+    there are two main strategies here for patching
+    (1) patch *Util/Workspace class 
+        with constructor-like 
+        in kb_faprotaxImpl,
+        good for integration tests
+    (2) patch.dict Var.dfu or Var.ws 
+        with function side-effect 
+        in the module it is used,
+        good for unit tests
+    '''
 
-    # TODO mock
+    # TODO mock dfu, run_check
+    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *args, **kwargs: get_mock_kbr())
     def test_AmpliconSet_no_row_AttributeMapping(self):
         ret = self.serviceImpl.run_FAPROTAX(
             self.ctx, {
@@ -197,7 +216,9 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                 'input_upa': secret_wRDP,
             })
         
+    # TODO mock run_check
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *args: get_mock_dfu('secret'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *args, **kwargs: get_mock_kbr())
     def test_AmpliconSet_no_taxonomy_no_row_AttributeMapping(self):
         with self.assertRaises(NoTaxonomyException) as cm:
             ret = self.serviceImpl.run_FAPROTAX(
@@ -207,9 +228,9 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                 })
             
 
-    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *args, **kwargs: get_mock_kbr('17770'))
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *args: get_mock_dfu('17770'))
     @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('17770'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *args, **kwargs: get_mock_kbr())
     def test_AmpliconSet_input_against_reference(self):
         '''
         Check results against answers if full pipeline is run (i.e., no mocks)
@@ -221,7 +242,7 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         ret = self.serviceImpl.run_FAPROTAX(
             self.ctx, {
                 **self.params_ws,
-                'input_upa': enigma17770,
+                'input_upa': _17770,
                 }
             )
 
@@ -306,16 +327,16 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             fp.write('\n'.join(html_l))
 
  
-    @patch_dict_('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
     def test_AmpliconSet_methods(self):
         '''
         Superficial testing
         '''
 
-        amp_set = AmpliconSet(enigma17770)
-
         ##
         ## good input
+
+        amp_set = AmpliconSet(_17770)
 
         id_l = ['fffa52555f0d542613a26955a558d76d', 'fffd0e743b783e58fb70f6a5c5e41901']
         taxStr_l = ['\
@@ -329,12 +350,12 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
 
         tax2ids_d = amp_set._get_tax2ids_d()
         for id, taxStr in zip(id_l, taxStr_l):
-            self.assertTrue(id in tax2ids[tax])
+            self.assertTrue(id in tax2ids_d[taxStr])
 
         ##
-        ## no taxonomy field
+        ## no taxonomy field input
 
-        mock_dfu.get_objects.side_effect = { # this mock is a global
+        mock_dfu.get_objects.side_effect = lambda params: { # this mock is a global
                 'data': [
                     {
                         'data': {
@@ -349,11 +370,11 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
                                 'amplicon1': {
                                     'consensus_sequence': 'aaggcctt',
                                     'taxonomy': {
-                                        'lineage': ['this', 'is bogus', 'tax'],
+                                        'lineage': ['this', 'is bogus', 'tax'], # TODO disallow?
                                     },
                                 },
                                 'amplicon2': {
-                                    'consensus_sequence': 'aaggcctt', # TODO disallow?
+                                    'consensus_sequence': 'aaggcctt',
                                     'taxonomy': {},
                                 },
                             },
@@ -367,19 +388,17 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
                 ]
         }
 
+        amp_set = AmpliconSet('du/mm/y')
+
         with self.assertRaises(NoTaxonomyException) as cm:
             amp_set.get_taxStr_l(['amplicon0', 'amplicon1', 'amplicon2'])
             self.assertEquals('`%s`' % 'amplicon2' in str(cm.exception)) # TODO should amplicon0 and amplion1 trigger exceptions?
 
 
-
-        
-
-
-    @patch_dict_('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
     def test_AmpliconMatrix_methods(self):
-        amp_set = AmpliconSet(enigma17770)
-        amp_mat = AmpliconMatrix(enigma17770_AmpMat, amp_set)
+        amp_set = AmpliconSet(_17770)
+        amp_mat = AmpliconMatrix(_17770_AmpMat, amp_set)
 
         # superficially test `to_OTU_table`
         df1 = pd.read_csv(
@@ -387,9 +406,14 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
         df2 = amp_mat.to_OTU_table()
 
         self.assertTrue(df1.columns.tolist() == df2.columns.tolist())
-        self.assertTrue(df1.index.tolist() == df2.index.tolist())
-        self.assertTrue(np.all(df1.values == df2.values))
-        self.assertTrue(df1.equals(df2), str(df1) + '\n\n' + str(df2))
+        self.assertTrue(df1.index.tolist() == df2.index.tolist()) # index is `taxonomy`
+        self.assertTrue(df1['OTU_Id'].tolist() == df2['OTU_Id'].tolist()) # first column is `OTU_Id`
+
+        data1 = df1.iloc[:,1:].values # rest of columns are data
+        data2 = df2.iloc[:,1:].values
+
+        self.assertTrue(np.all(np.abs(data1 - data2) < 10**-15)) # python floating point issue 
+                                                                 # e.g., 0.1 + 0.1 + 0.1 => 0.30000000000000004
 
 
     @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu(None), 'warnings': []})
@@ -515,7 +539,7 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
 
 
     def shortDescription(self):
-        '''Override unittest using test*() docstrings in output'''
+        '''Override unittest using test*() docstrings in lieu of test*() method name in output summary'''
         return None
 
 
@@ -536,7 +560,7 @@ AmpliconSet_tests = unit_tests + ['test_AmpliconSet_input_against_reference',
     'test_AmpliconSet_methods', 'test_AmpliconMatrix_methods', 'test_AttributeMapping_methods']
 GenomeSet_tests = unit_tests + ['test_GenomeSet_input', 'test_GenomeSet_methods', 'test_Genome_methods',
     'test_dummy_abundance', 'test_dup_GenomeSet']
-run_tests = ['test_AmpliconSet_no_taxonomy_no_row_AttributeMapping']#,  'test_AmpliconSet_no_row_AttributeMapping']
+run_tests = ['test_AmpliconMatrix_methods']
 
 for key, value in kb_faprotaxTest.__dict__.copy().items():
     if key.startswith('test') and callable(value):

@@ -1,5 +1,3 @@
-
-
 msg_overwriteAttribute = (
 'Overwriting attribute `%s` with source `%s` in row AttributeMapping with name `%s`')
 
