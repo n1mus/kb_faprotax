@@ -37,7 +37,7 @@ from util.upa import * # upa library
 ######### TOGGLE PATCH ###############
 ######################################
 ###################################### 
-do_patch = True
+do_patch = False
 
 if do_patch:
     patch_ = patch
@@ -56,7 +56,7 @@ else:
 class kb_faprotaxTest(unittest.TestCase):
 
 ####################################################################################################
-####################################################################################################
+########################## unit tests ##############################################################
 ####################################################################################################
 
     # doesn't need mocking - fast
@@ -65,7 +65,7 @@ class kb_faprotaxTest(unittest.TestCase):
         from kb_faprotax.util.workflow import parse_faprotax_functions
 
         flnm = 'groups2records_dense.tsv'
-        flpth = os.path.join(testData_dir, 'by_dataset_input/refseq/return/faprotax_output', flnm)
+        flpth = os.path.join(testData_dir, 'by_dataset_input/refseq/return/FAPROTAX_output, flnm)
         
         r2g_d = parse_faprotax_functions(flpth)
 
@@ -99,21 +99,22 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         run_check('set -o pipefail && echo hi |& tee tmp') # run correctly
 
 
-####################################################################################################
-########################### GenomeSet input ########################################################
-####################################################################################################
+ 
+    # TODO superficially test ctor
+    def test_GenomeSet_methods(self):
+        pass
+       
+
+    def test_Genome_methods(self):
+        '''
+        Genome methods are quite simple, 
+        they are tested in other places
+        '''
+        pass
+
 
     # doesn't need mocking - fast
-    def test_GenomeSet_input(self):
-        ret = self.serviceImpl.run_FAPROTAX(
-            self.ctx, {
-                **self.params_ws,
-                'input_upa': refseq,
-            }
-        )
-
-    # doesn't need mocking - fast
-    def test_dummy_abundance(self):
+    def test_dummy_OTU_table_abundance(self):
         '''
         Test different dummy abundances in FAPROTAX input OTU table
         (The GenomeSet workflow uses dummy values in the input OTU table 
@@ -165,19 +166,164 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         # check all output is equal
         for combo in combinations(r2g_d_l, 2):
             self.assertTrue(combo[0] == combo[1])
-
  
-    # TODO superficially test ctor
-    def test_GenomeSet_methods(self):
-        pass
-       
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
+    def test_AmpliconSet_methods(self):
+        '''
+        Superficial testing
+        '''
 
-    def test_Genome_methods(self):
-        '''
-        Genome methods are quite simple, 
-        they are tested in other places
-        '''
-        pass
+        ##
+        ## good input
+
+        amp_set = AmpliconSet(_17770)
+
+        id_l = ['fffa52555f0d542613a26955a558d76d', 'fffd0e743b783e58fb70f6a5c5e41901']
+        taxStr_l = ['\
+D_0__Bacteria; D_1__Proteobacteria; D_2__Gammaproteobacteria; D_3__Steroidobacterales; D_4__Steroidobacteraceae; \
+D_5__Steroidobacter; D_6__Steroidobacter:u; D_7__Steroidobacter:u; D_8__Steroidobacter:u; D_9__Steroidobacter:u; \
+D_10__Steroidobacter:u', 'D_0__Bacteria; D_1__Proteobacteria; D_2__Deltaproteobacteria; D_3__Sva0485; D_4__Sva0485:u; \
+D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; D_10__Sva0485:u']
+
+        self.assertTrue(amp_set.get_taxStr_l([]) == [])
+        self.assertTrue(amp_set.get_taxStr_l(id_l) == taxStr_l) 
+
+        tax2ids_d = amp_set._get_tax2ids_d()
+        for id, taxStr in zip(id_l, taxStr_l):
+            self.assertTrue(id in tax2ids_d[taxStr])
+
+        ##
+        ## no taxonomy field input
+
+        mock_dfu.get_objects.side_effect = lambda params: { # this mock is a global
+                'data': [
+                    {
+                        'data': {
+                            'amplicon_matrix_ref': '-1/-2/-3',
+                            'amplicons': {
+                                'amplicon0': {
+                                    'consensus_sequence': 'aaggcctt',
+                                    'taxonomy': {
+                                        'lineage': [], # TODO disallow?
+                                    },
+                                },
+                                'amplicon1': {
+                                    'consensus_sequence': 'aaggcctt',
+                                    'taxonomy': {
+                                        'lineage': ['this', 'is bogus', 'tax'], # TODO disallow?
+                                    },
+                                },
+                                'amplicon2': {
+                                    'consensus_sequence': 'aaggcctt',
+                                    'taxonomy': {},
+                                },
+                            },
+                        },
+                        'info': [
+                            -666,
+                            'AmpliconSet_NoTaxonomy_Dummy_Name',
+                            'Dummy.AmpliconSet-1.0',
+                        ]
+                    }
+                ]
+        }
+
+        amp_set = AmpliconSet('du/mm/y')
+
+        with self.assertRaises(NoTaxonomyException) as cm:
+            amp_set.get_taxStr_l(['amplicon0', 'amplicon1', 'amplicon2'])
+            self.assertEquals('`%s`' % 'amplicon2' in str(cm.exception)) # TODO should amplicon0 and amplion1 trigger exceptions?
+
+
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
+    def test_AmpliconMatrix_methods(self):
+        amp_set = AmpliconSet(_17770)
+        amp_mat = AmpliconMatrix(_17770_AmpMat, amp_set)
+
+        # superficially test `to_OTU_table`
+        df1 = pd.read_csv(
+            os.path.join(testData_dir, 'by_dataset_input/17770/return/otu_table.tsv'), sep='\t', index_col='taxonomy') 
+        df2 = amp_mat.to_OTU_table()
+
+        self.assertTrue(df1.columns.tolist() == df2.columns.tolist())
+        self.assertTrue(df1.index.tolist() == df2.index.tolist()) # index is `taxonomy`
+        self.assertTrue(df1['OTU_Id'].tolist() == df2['OTU_Id'].tolist()) # first column is `OTU_Id`
+
+        data1 = df1.iloc[:,1:].values # rest of columns are data
+        data2 = df2.iloc[:,1:].values
+
+        self.assertTrue(np.all(np.abs(data1 - data2) < 10**-15)) # python floating point issue 
+                                                                 # e.g., 0.1 + 0.1 + 0.1 => 0.30000000000000004
+
+
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu(None), 'warnings': []})
+    def test_AttributeMapping_methods(self):
+        # set `get_objects` to return something simpler and independent
+        obj = {
+            "data": [
+                {
+                    "data": {
+                        "attributes": [
+                            {
+                                "attribute": "celestial body",
+                                "source": "upload",
+                            },
+                            {
+                                "attribute": "biome",
+                                "source": "upload",
+                            },
+                        ],
+                        "instances": {
+                            "fffffffffffffffffffffffffffffffd": [
+                                "Ganymede",
+                                "tundra",
+                            ],
+                            "fffffffffffffffffffffffffffffffe": [
+                                "Mars",
+                                "rainforest",
+                            ],
+                            "ffffffffffffffffffffffffffffffff": [
+                                "Saturn",
+                                "chaparral",
+                            ],
+                        }
+                    },
+                    "info": [
+                        -1,
+                        "AttributeMapping_dummy_name",
+                    ]
+                }
+            ]
+        }
+        mock_dfu.get_objects.side_effect = lambda params: obj
+
+        id2attr_d = {'f' * 31 + 'd': 'black hole', 'f' * 31 + 'e': 'quasar', 'f' * 32: 'dark matter'}
+
+        attr_map = AttributeMapping('-111/-1/-1')
+
+        ind = attr_map.add_attribute_slot('celestial body', 'unit testing')
+        attr_map.update_attribute(ind, id2attr_d)
+        self.assertTrue(len(Var.warnings) == 0)
+        
+        ind = attr_map.add_attribute_slot('celestial body', 'upload')
+        attr_map.update_attribute(ind, id2attr_d)
+        self.assertTrue(len(Var.warnings) == 1)
+
+
+
+
+####################################################################################################
+########################### GenomeSet input workflow ###############################################
+####################################################################################################
+
+    # doesn't need mocking - fast
+    def test_GenomeSet_input(self):
+        ret = self.serviceImpl.run_FAPROTAX(
+            self.ctx, {
+                **self.params_ws,
+                'input_upa': refseq,
+            }
+        )
 
     # doesn't need mocking - fast
     def test_dup_GenomeSet(self):
@@ -326,150 +472,6 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         with open(f'/kb/module/work/tmp/diff.html', 'w') as fp:
             fp.write('\n'.join(html_l))
 
- 
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
-    def test_AmpliconSet_methods(self):
-        '''
-        Superficial testing
-        '''
-
-        ##
-        ## good input
-
-        amp_set = AmpliconSet(_17770)
-
-        id_l = ['fffa52555f0d542613a26955a558d76d', 'fffd0e743b783e58fb70f6a5c5e41901']
-        taxStr_l = ['\
-D_0__Bacteria; D_1__Proteobacteria; D_2__Gammaproteobacteria; D_3__Steroidobacterales; D_4__Steroidobacteraceae; \
-D_5__Steroidobacter; D_6__Steroidobacter:u; D_7__Steroidobacter:u; D_8__Steroidobacter:u; D_9__Steroidobacter:u; \
-D_10__Steroidobacter:u', 'D_0__Bacteria; D_1__Proteobacteria; D_2__Deltaproteobacteria; D_3__Sva0485; D_4__Sva0485:u; \
-D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; D_10__Sva0485:u']
-
-        self.assertTrue(amp_set.get_taxStr_l([]) == [])
-        self.assertTrue(amp_set.get_taxStr_l(id_l) == taxStr_l) 
-
-        tax2ids_d = amp_set._get_tax2ids_d()
-        for id, taxStr in zip(id_l, taxStr_l):
-            self.assertTrue(id in tax2ids_d[taxStr])
-
-        ##
-        ## no taxonomy field input
-
-        mock_dfu.get_objects.side_effect = lambda params: { # this mock is a global
-                'data': [
-                    {
-                        'data': {
-                            'amplicon_matrix_ref': '-1/-2/-3',
-                            'amplicons': {
-                                'amplicon0': {
-                                    'consensus_sequence': 'aaggcctt',
-                                    'taxonomy': {
-                                        'lineage': [], # TODO disallow?
-                                    },
-                                },
-                                'amplicon1': {
-                                    'consensus_sequence': 'aaggcctt',
-                                    'taxonomy': {
-                                        'lineage': ['this', 'is bogus', 'tax'], # TODO disallow?
-                                    },
-                                },
-                                'amplicon2': {
-                                    'consensus_sequence': 'aaggcctt',
-                                    'taxonomy': {},
-                                },
-                            },
-                        },
-                        'info': [
-                            -666,
-                            'AmpliconSet_NoTaxonomy_Dummy_Name',
-                            'Dummy.AmpliconSet-1.0',
-                        ]
-                    }
-                ]
-        }
-
-        amp_set = AmpliconSet('du/mm/y')
-
-        with self.assertRaises(NoTaxonomyException) as cm:
-            amp_set.get_taxStr_l(['amplicon0', 'amplicon1', 'amplicon2'])
-            self.assertEquals('`%s`' % 'amplicon2' in str(cm.exception)) # TODO should amplicon0 and amplion1 trigger exceptions?
-
-
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('17770')})
-    def test_AmpliconMatrix_methods(self):
-        amp_set = AmpliconSet(_17770)
-        amp_mat = AmpliconMatrix(_17770_AmpMat, amp_set)
-
-        # superficially test `to_OTU_table`
-        df1 = pd.read_csv(
-            os.path.join(testData_dir, 'by_dataset_input/17770/return/otu_table.tsv'), sep='\t', index_col='taxonomy') 
-        df2 = amp_mat.to_OTU_table()
-
-        self.assertTrue(df1.columns.tolist() == df2.columns.tolist())
-        self.assertTrue(df1.index.tolist() == df2.index.tolist()) # index is `taxonomy`
-        self.assertTrue(df1['OTU_Id'].tolist() == df2['OTU_Id'].tolist()) # first column is `OTU_Id`
-
-        data1 = df1.iloc[:,1:].values # rest of columns are data
-        data2 = df2.iloc[:,1:].values
-
-        self.assertTrue(np.all(np.abs(data1 - data2) < 10**-15)) # python floating point issue 
-                                                                 # e.g., 0.1 + 0.1 + 0.1 => 0.30000000000000004
-
-
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu(None), 'warnings': []})
-    def test_AttributeMapping_methods(self):
-        # set `get_objects` to return something simpler and independent
-        obj = {
-            "data": [
-                {
-                    "data": {
-                        "attributes": [
-                            {
-                                "attribute": "celestial body",
-                                "source": "upload",
-                            },
-                            {
-                                "attribute": "ecosystem",
-                                "source": "upload",
-                            },
-                        ],
-                        "instances": {
-                            "fffffffffffffffffffffffffffffffd": [
-                                "Ganymede",
-                                "tundra",
-                            ],
-                            "fffffffffffffffffffffffffffffffe": [
-                                "Mars",
-                                "rainforest",
-                            ],
-                            "ffffffffffffffffffffffffffffffff": [
-                                "Saturn",
-                                "chaparral",
-                            ],
-                        }
-                    },
-                    "info": [
-                        -1,
-                        "AttributeMapping_dummy_name",
-                    ]
-                }
-            ]
-        }
-        mock_dfu.get_objects.side_effect = lambda params: obj
-
-        id2attr_d = {'f' * 31 + 'd': 'black hole', 'f' * 31 + 'e': 'quasar', 'f' * 32: 'dark matter'}
-
-        attr_map = AttributeMapping('-111/-1/-1')
-
-        ind = attr_map.add_attribute_slot('celestial body', 'unit testing')
-        attr_map.update_attribute(ind, id2attr_d)
-        self.assertTrue(len(Var.warnings) == 0)
-        
-        ind = attr_map.add_attribute_slot('celestial body', 'upload')
-        attr_map.update_attribute(ind, id2attr_d)
-        self.assertTrue(len(Var.warnings) == 1)
-
-
                  
 
 
@@ -559,7 +561,7 @@ AmpliconSet_tests = unit_tests + ['test_AmpliconSet_input_against_reference',
     'test_AmpliconSet_no_row_AttributeMapping', 'test_AmpliconSet_no_taxonomy_no_row_AttributeMapping',
     'test_AmpliconSet_methods', 'test_AmpliconMatrix_methods', 'test_AttributeMapping_methods']
 GenomeSet_tests = unit_tests + ['test_GenomeSet_input', 'test_GenomeSet_methods', 'test_Genome_methods',
-    'test_dummy_abundance', 'test_dup_GenomeSet']
+    'test_dummy_OTU_table_abundance', 'test_dup_GenomeSet']
 run_tests = ['test_AmpliconMatrix_methods']
 
 for key, value in kb_faprotaxTest.__dict__.copy().items():

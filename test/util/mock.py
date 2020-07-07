@@ -107,24 +107,9 @@ def get_mock_run_check(dataset):
     # side effect
     def mock_run_check_(cmd):
         logging.info('Mocking running cmd `%s`' % cmd)
-        
-        args = cmd.split()
-        ind = args.index('--out_groups2records_table_dense')
-
-        groups2records_table_dense_flpth = args[ind + 1]
-        out_dir = os.path.dirname(groups2records_table_dense_flpth)
-        return_dir = os.path.dirname(out_dir)
-        
-        rmtree(return_dir)
-
-        if dataset == '17770':
-            copytree(os.path.join(testData_dir, 'by_dataset_input', '17770', 'return'), return_dir)
-
-        elif dataset == 'refseq':
-            copytree(os.path.join(testData_dir, 'by_dataset_input', 'refseq', 'return'), return_dir)
-
-        else:
-            raise Exception('`dataset` not understood')
+       
+        rmtree(Var.return_dir)
+        copytree(os.path.join(testData_dir, 'by_dataset_input', dataset, 'return'), Var.return_dir)
 
     mock_run_check.side_effect = mock_run_check_
 

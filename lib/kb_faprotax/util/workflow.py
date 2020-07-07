@@ -95,18 +95,18 @@ def do_GenomeSet_workflow():
     log_flpth = os.path.join(Var.return_dir, 'log.txt')
     cmd_flpth = os.path.join(Var.return_dir, 'cmd.txt')
 
-    out_dir = os.path.join(Var.return_dir, 'faprotax_output') # for output files
-    sub_tables_dir = os.path.join(out_dir, 'sub_tables')
+    Var.out_dir = os.path.join(Var.return_dir, 'FAPROTAX_output') # for output files
+    sub_tables_dir = os.path.join(Var.out_dir, 'sub_tables')
 
-    os.mkdir(out_dir)
+    os.mkdir(Var.out_dir)
     os.mkdir(sub_tables_dir)
 
-    func_table_flpth = os.path.join(out_dir, 'func_table.tsv')
-    report_flpth = os.path.join(out_dir, 'report.txt')
-    groups2records_table_flpth = os.path.join(out_dir, 'groups2records.tsv')
-    groups2records_table_dense_flpth = os.path.join(out_dir, 'groups2records_dense.tsv')
-    group_overlaps_flpth = os.path.join(out_dir, 'group_overlaps.tsv')
-    group_definitions_used_flpth = os.path.join(out_dir, 'group_definitions_used.txt')
+    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
+    report_flpth = os.path.join(Var.out_dir, 'report.txt')
+    groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
+    groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
+    group_overlaps_flpth = os.path.join(Var.out_dir, 'group_overlaps.tsv')
+    group_definitions_used_flpth = os.path.join(Var.out_dir, 'group_definitions_used.txt')
 
 
     cmd = ' '.join([
@@ -267,18 +267,18 @@ def do_AmpliconSet_workflow():
     taxon_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
     amp_mat.to_OTU_table(taxon_table_flpth)
 
-    out_dir = os.path.join(Var.return_dir, 'faprotax_output')
-    sub_tables_dir = os.path.join(out_dir, 'sub_tables')
+    Var.out_dir = os.path.join(Var.return_dir, 'FAPROTAX_output')
+    sub_tables_dir = os.path.join(Var.out_dir, 'sub_tables')
 
-    os.mkdir(out_dir)
+    os.mkdir(Var.out_dir)
     os.mkdir(sub_tables_dir)
 
-    func_table_flpth = os.path.join(out_dir, 'func_table.tsv')
-    report_flpth = os.path.join(out_dir, 'report.txt')
-    groups2records_table_flpth = os.path.join(out_dir, 'groups2records.tsv')
-    groups2records_table_dense_flpth = os.path.join(out_dir, 'groups2records_dense.tsv')
-    group_overlaps_flpth = os.path.join(out_dir, 'group_overlaps.tsv')
-    group_definitions_used_flpth = os.path.join(out_dir, 'group_definitions_used.txt')
+    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
+    report_flpth = os.path.join(Var.out_dir, 'report.txt')
+    groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
+    groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
+    group_overlaps_flpth = os.path.join(Var.out_dir, 'group_overlaps.tsv')
+    group_definitions_used_flpth = os.path.join(Var.out_dir, 'group_definitions_used.txt')
 
 
     cmd = ' '.join([
