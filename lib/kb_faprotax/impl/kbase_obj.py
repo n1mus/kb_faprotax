@@ -5,10 +5,9 @@ import numpy as np
 from urllib.parse import urlparse
 import json
 
-from .dprint import dprint
-from .varstash import Var
-from .error import *
-from .message import *
+from kb_faprotax.util.debug import dprint
+from kb_faprotax.util.config import Var
+from kb_faprotax.impl.error import * # exceptions, errors
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
@@ -69,7 +68,8 @@ class GenomeSet:
         # check for duplicate upas
         upa_l = [genome_element[0] for genome_element in genome_element_l if genome_element[0] != None]
         if len(set(upa_l)) < len(upa_l):
-            Var.warnings.append(msg_dupGenomes)
+            msg = 'Duplicate referenced Genomes in GenomeSet' 
+            Var.warnings.append(msg)
 
         # sort out which Genomes came as upas, which came as data
         ind_upa = [i for i in range(len(genome_element_l)) if genome_element_l[i][0] != None]
@@ -82,7 +82,7 @@ class GenomeSet:
 
         # goi3
         logging.info('Fetching Genome info and metadata')
-        oi_l_temp = Var.ws.get_object_info3({'objects': objects, 'includeMetadata': 1})['infos']
+        oi_l_temp = Var.ws.get_object_info3({'objects': objects, 'includeMetadata': 1})['infos'] # TODO batch limit is 10k (?)
 
         # insert placeholder `None`s into `oi_l` for Genomes that came as data, not upa
         oi_l = []
@@ -248,7 +248,13 @@ class AmpliconSet:
             taxonomy_d = amplicons_d[id]['taxonomy']
             
             if 'lineage' not in taxonomy_d: # TODO disallow `'lineage': {}`?
-                raise NoTaxonomyException(msg_missingTaxonomy % id)
+                msg = (
+                    "Input AmpliconSet is missing taxonomy for amplicon with id `%s`. " # using amplicon id for testing
+                    "(Taxonomic assignments can be obtained for all amplicons in AmpliconSet "
+                    "by first running kb_RDP_Classifier.)" 
+                    % (id)
+                )
+                raise NoTaxonomyException(msg % id)
 
             taxStr = self._concat_tax(taxonomy_d['lineage'])   
             taxStr_l.append(taxStr)
@@ -351,7 +357,7 @@ class AmpliconMatrix:
     def to_OTU_table(self, flpth=None):
         '''
         `taxonomy` is index
-        `OTU_Id` is first column
+        `id` is first column
 
         This interface is used for testing
         Return df for testing
@@ -365,12 +371,12 @@ class AmpliconMatrix:
 
         df = pd.DataFrame(
             data, 
-            index=self.amp_set.get_taxStr_l(row_ids), 
+            index=self.amp_set.get_taxStr_l(row_ids), # TODO do these match between AmpSet (and row AttrMap)
             columns=col_ids
-            )
+        )
         df.index.name = "taxonomy"
-        df['OTU_Id'] = row_ids # add OTU_Id for identification purposes (?)
-        df = df[['OTU_Id'] + col_ids] # reorder
+        df['id'] = row_ids # add id for identification purposes (?)
+        df = df[['id'] + col_ids] # reorder
 
         if flpth != None:
             df.to_csv(flpth, sep='\t')
@@ -436,19 +442,34 @@ class AttributeMapping:
             self.obj['instances'][id][ind] = attr
 
 
-    def add_attribute_slot(self, attribute, source) -> int:
+    def get_attribute_slot(self, attribute, source, create=True) -> int:
         '''
-        If attribute not already entered, add slot for it
-        Return its index in the attributes/instances
+        Get attribute slot matching both `attribute` and `source`
+        
+        Return the index of that slot, 
+        which corresponds to both obj['attributes'] and each list in obj['instances']
+
+        If slot matching both `attribute` and `source` does not exist
+        * if `create=True` add slot for it
+        * if `create=False` return -1
         '''
         
         # check if already exists
         for ind, attr_d in enumerate(self.obj['attributes']):
             if attr_d['attribute'] == attribute and attr_d['source'] == source:
-                msg = msg_overwriteAttribute % (attribute, source, self.name)
+                msg = (
+                    'Overwriting attribute `%s` with source `%s` '
+                    'in row AttributeMapping with name `%s`'
+                    % (attribute, source, self.name)
+                )
                 logging.warning(msg)
                 Var.warnings.append(msg)
                 return ind
+
+        # if slot not found
+        # and not creating a new one
+        if create != True:
+            return -1
 
         # append slot to `attributes`
         self.obj['attributes'].append({

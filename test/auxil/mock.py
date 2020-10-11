@@ -8,8 +8,8 @@ from installed_clients.DataFileUtilClient import DataFileUtil
 from installed_clients.KBaseReportClient import KBaseReport
 from installed_clients.WorkspaceClient import Workspace
 
-from kb_faprotax.util.dprint import dprint
-from kb_faprotax.util.workflow import run_check
+from kb_faprotax.util.debug import dprint
+from kb_faprotax.impl.workflow import run_check
 from .upa import *
 
 
@@ -63,9 +63,9 @@ def get_mock_dfu(dataset):
 
         upa = params['object_refs'][0]
         flnm = {
-            _17770: 'get_objects_AmpliconSet.json',
-            _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
-            _17770_AttrMap: 'get_objects_AttributeMapping.json',
+            the_17770: 'get_objects_AmpliconSet.json',
+            the_17770_AmpMat: 'get_objects_AmpliconMatrix.json',
+            the_17770_AttrMap: 'get_objects_AttributeMapping.json',
             secret: 'get_objects_AmpliconSet.json',
             secret_AmpMat: 'get_objects_AmpliconMatrix.json',
             }[upa]

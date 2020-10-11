@@ -7,7 +7,7 @@ import time
 import inspect
 import time as time_
 
-from .varstash import Var
+from .config import Var
 
 
 subproc_run = functools.partial(

@@ -4,9 +4,6 @@ import logging
 import os
 import sys
 import uuid
-import subprocess
-import functools
-from dotmap import DotMap
 
 
 from installed_clients.KBaseReportClient import KBaseReport
@@ -14,10 +11,10 @@ from installed_clients.DataFileUtilClient import DataFileUtil
 from installed_clients.WorkspaceClient import Workspace
 
 
-from .util.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
-from .util.dprint import dprint
-from .util.varstash import Var, reset_Var # `Var` holds globals, `reset` clears everything but config stuff
-from .util.workflow import do_AmpliconSet_workflow, do_GenomeSet_workflow
+from .impl.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
+from .impl.workflow import do_AmpliconSet_workflow, do_GenomeSet_workflow
+from .util.debug import dprint
+from .util.config import Var, reset_Var # `Var` holds globals, `reset_Var` clears everything but config stuff
 
 
 #END_HEADER
@@ -93,7 +90,7 @@ class kb_faprotax:
             'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
             'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
             'params': params,
-            'run_dir': os.path.join(self.shared_folder, str(uuid.uuid4())),
+            'run_dir': os.path.join(self.shared_folder, 'run_kbfpx_' + str(uuid.uuid4())),
             'warnings': [],
         })
 
@@ -105,6 +102,8 @@ class kb_faprotax:
 
         os.mkdir(Var.return_dir)
 
+
+        # TODO doc run directory structure
 
 
         #

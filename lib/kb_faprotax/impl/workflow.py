@@ -9,10 +9,9 @@ import numpy as np
 import json
 import shutil
 
-from .dprint import dprint
-from .varstash import Var
+from kb_faprotax.util.debug import dprint
+from kb_faprotax.util.config import Var
 from .error import *
-from .message import *
 from .kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping, GenomeSet, Genome
 
 
@@ -64,6 +63,180 @@ def parse_faprotax_functions(groups2records_table_dense_flpth, dlm=',') -> dict:
 
 ####################################################################################################
 ####################################################################################################
+####################################################################################################
+####################################################################################################
+####################################################################################################
+def do_AmpliconSet_workflow():
+
+    
+    #
+    ##
+    ### kbase obj
+    ####
+    #####
+
+    amp_set = AmpliconSet(Var.params['input_upa'])
+    amp_mat = AmpliconMatrix(amp_set.amp_mat_upa, amp_set)
+
+    amp_mat.to_OTU_table()
+
+    if amp_mat.row_attrmap_upa:
+        row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
+        
+    else:
+        msg = (
+"Input AmpliconSet's associated AmpliconMatrix does not have a row AttributeMapping object to assign traits to. "
+"To create a row AttributeMapping, try running the the AttributeMapping uploader or kb_RDP_Classifier first")
+        logging.warning(msg)
+        Var.warnings.append(msg)
+
+
+
+
+
+    #
+    ##
+    ### params
+    ####
+    #####
+
+
+    log_flpth = os.path.join(Var.return_dir, 'log.txt')
+    cmd_flpth = os.path.join(Var.return_dir, 'cmd.txt')
+
+    taxon_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
+    amp_mat.to_OTU_table(taxon_table_flpth)
+
+    Var.out_dir = os.path.join(Var.return_dir, 'FAPROTAX_output')
+    sub_tables_dir = os.path.join(Var.out_dir, 'sub_tables')
+
+    os.mkdir(Var.out_dir)
+    os.mkdir(sub_tables_dir)
+
+    collapsed_func_table_flpth = os.path.join(Var.out_dir, 'collapsed_func_table.tsv')
+    report_flpth = os.path.join(Var.out_dir, 'report.txt')
+    groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
+    groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
+    group_overlaps_flpth = os.path.join(Var.out_dir, 'group_overlaps.tsv')
+    group_definitions_used_flpth = os.path.join(Var.out_dir, 'group_definitions_used.txt')
+
+
+    cmd = ' '.join([
+        'set -o pipefail &&',
+        Var.cmd_flpth,
+        '--input_table', taxon_table_flpth,
+        '--input_groups_file', Var.db_flpth,
+        '--out_collapsed', collapsed_func_table_flpth,
+        '--out_report', report_flpth,
+        '--out_sub_tables_dir', sub_tables_dir,
+        '--out_groups2records_table', groups2records_table_flpth,
+        '--out_groups2records_table_dense', groups2records_table_dense_flpth,
+        '--out_group_overlaps', group_overlaps_flpth,
+        '--out_group_definitions_used', group_definitions_used_flpth,
+        '--row_names_are_in_column', 'taxonomy',
+        '--omit_columns', '1',
+        '--verbose',
+        '|& tee', log_flpth
+        ])
+
+    with open(cmd_flpth, 'w') as f:
+        f.write(cmd)
+
+
+
+    #
+    ##
+    ### run
+    ####
+    #####
+
+    run_check(cmd)
+
+
+
+
+    #
+    ##
+    ### update AttributeMap, AmpliconMatrix, AmpliconSet
+    ####
+    #####
+
+
+
+    Var.objects_created = [] # TODO get this from return
+    if amp_mat.row_attrmap_upa:
+
+        attribute = 'FAPROTAX Functions'
+        source = 'kb_faprotax/run_FAPROTAX'
+
+        tax2functions_d = parse_faprotax_functions(groups2records_table_dense_flpth)
+        id2functions_d = amp_set.get_id2functions_d(tax2functions_d) # amp_set has id-tax map
+
+        ind = row_attrmap.get_attribute_slot(attribute, source)
+        row_attrmap.update_attribute(ind, id2functions_d)
+        row_attrmap_upa_new = row_attrmap.save()
+
+        amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
+        amp_mat_upa_new = amp_mat.save()
+
+        amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
+        amp_set_upa_new = amp_set.save(name=Var.params.get('output_amplicon_set_name'))
+        
+        Var.objects_created = [
+            {'ref': row_attrmap_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
+            {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
+            {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
+        ]
+
+
+
+    #
+    ##
+    ### return 
+    ####
+    #####
+
+
+    file_links = [{
+        'path': Var.return_dir, 
+        'name': 'faprotax_results.zip',
+        'description': 'Input, output, logs to FAPROTAX run'
+        }]
+
+
+    params_report = {
+        'warnings': Var.warnings,
+        'objects_created': Var.objects_created,
+        'file_links': file_links,
+        'report_object_name': 'kb_faprotax_report',
+        'workspace_id': Var.params['workspace_id'],
+        }
+
+
+    report_output = Var.kbr.create_extended_report(params_report)
+
+    output = {
+        'report_name': report_output['name'],
+        'report_ref': report_output['ref'],
+    }
+
+    dprint('output', run=locals())
+
+    return [output]
+
+
+
+
+
+
+
+
+
+####################################################################################################
+####################################################################################################
+####################################################################################################
+####################################################################################################
+####################################################################################################
 def do_GenomeSet_workflow():
 
 
@@ -101,7 +274,7 @@ def do_GenomeSet_workflow():
     os.mkdir(Var.out_dir)
     os.mkdir(sub_tables_dir)
 
-    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
+    collapsed_func_table_flpth = os.path.join(Var.out_dir, 'collapsed_collapsed_func_table.tsv')
     report_flpth = os.path.join(Var.out_dir, 'report.txt')
     groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
     groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
@@ -114,7 +287,7 @@ def do_GenomeSet_workflow():
         Var.cmd_flpth,
         '--input_table', otu_table_flpth,
         '--input_groups_file', Var.db_flpth,
-        '--out_collapsed', func_table_flpth,
+        '--out_collapsed', collapsed_func_table_flpth,
         '--out_report', report_flpth,
         '--out_sub_tables_dir', sub_tables_dir,
         '--out_groups2records_table', groups2records_table_flpth,
@@ -221,173 +394,5 @@ def do_GenomeSet_workflow():
 
 
     
-
-
-
-####################################################################################################
-####################################################################################################
-def do_AmpliconSet_workflow():
-
-    
-    #
-    ##
-    ### kbase obj
-    ####
-    #####
-
-    amp_set = AmpliconSet(Var.params['input_upa'])
-    amp_mat = AmpliconMatrix(amp_set.amp_mat_upa, amp_set)
-
-    amp_mat.to_OTU_table()
-
-    if amp_mat.row_attrmap_upa:
-        row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
-        
-    else:
-        msg = (
-"Input AmpliconSet's associated AmpliconMatrix does not have a row AttributeMapping object to assign traits to. "
-"To create a row AttributeMapping, try running the the AttributeMapping uploader or kb_RDP_Classifier first")
-        logging.warning(msg)
-        Var.warnings.append(msg)
-
-
-
-
-
-    #
-    ##
-    ### params
-    ####
-    #####
-
-
-    log_flpth = os.path.join(Var.return_dir, 'log.txt')
-    cmd_flpth = os.path.join(Var.return_dir, 'cmd.txt')
-
-    taxon_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
-    amp_mat.to_OTU_table(taxon_table_flpth)
-
-    Var.out_dir = os.path.join(Var.return_dir, 'FAPROTAX_output')
-    sub_tables_dir = os.path.join(Var.out_dir, 'sub_tables')
-
-    os.mkdir(Var.out_dir)
-    os.mkdir(sub_tables_dir)
-
-    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
-    report_flpth = os.path.join(Var.out_dir, 'report.txt')
-    groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
-    groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
-    group_overlaps_flpth = os.path.join(Var.out_dir, 'group_overlaps.tsv')
-    group_definitions_used_flpth = os.path.join(Var.out_dir, 'group_definitions_used.txt')
-
-
-    cmd = ' '.join([
-        'set -o pipefail &&',
-        Var.cmd_flpth,
-        '--input_table', taxon_table_flpth,
-        '--input_groups_file', Var.db_flpth,
-        '--out_collapsed', func_table_flpth,
-        '--out_report', report_flpth,
-        '--out_sub_tables_dir', sub_tables_dir,
-        '--out_groups2records_table', groups2records_table_flpth,
-        '--out_groups2records_table_dense', groups2records_table_dense_flpth,
-        '--out_group_overlaps', group_overlaps_flpth,
-        '--out_group_definitions_used', group_definitions_used_flpth,
-        '--row_names_are_in_column', 'taxonomy',
-        '--omit_columns', '1',
-        '--verbose',
-        '|& tee', log_flpth
-        ])
-
-    with open(cmd_flpth, 'w') as f:
-        f.write(cmd)
-
-
-
-    #
-    ##
-    ### run
-    ####
-    #####
-
-    run_check(cmd)
-
-
-
-
-    #
-    ##
-    ### update AttributeMap, AmpliconMatrix, AmpliconSet
-    ####
-    #####
-
-
-
-    Var.objects_created = [] # TODO get this from return
-    if amp_mat.row_attrmap_upa:
-
-        attribute = 'FAPROTAX Functions'
-        source = 'kb_faprotax/run_FAPROTAX'
-
-        tax2functions_d = parse_faprotax_functions(groups2records_table_dense_flpth)
-        id2functions_d = amp_set.get_id2functions_d(tax2functions_d) # amp_set has id-tax map
-
-        ind = row_attrmap.add_attribute_slot(attribute, source)
-        row_attrmap.update_attribute(ind, id2functions_d)
-        row_attrmap_upa_new = row_attrmap.save()
-
-        amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
-        amp_mat_upa_new = amp_mat.save()
-
-        amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
-        amp_set_upa_new = amp_set.save(name=Var.params.get('output_amplicon_set_name'))
-        
-        Var.objects_created = [
-            {'ref': row_attrmap_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
-            {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
-            {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
-        ]
-
-
-
-    #
-    ##
-    ### return 
-    ####
-    #####
-
-
-    file_links = [{
-        'path': Var.return_dir, 
-        'name': 'faprotax_results.zip',
-        'description': 'Input, output, logs to FAPROTAX run'
-        }]
-
-
-    params_report = {
-        'warnings': Var.warnings,
-        'objects_created': Var.objects_created,
-        'file_links': file_links,
-        'report_object_name': 'kb_faprotax_report',
-        'workspace_id': Var.params['workspace_id'],
-        }
-
-
-    report_output = Var.kbr.create_extended_report(params_report)
-
-    output = {
-        'report_name': report_output['name'],
-        'report_ref': report_output['ref'],
-    }
-
-    dprint('output', run=locals())
-
-    return [output]
-
-
-
-
-
-
 
 

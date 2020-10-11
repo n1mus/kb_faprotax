@@ -27,19 +27,27 @@ parameters :
         ui-name : |
             Input object
         short-hint : |
-            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>
+            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>.
     output_amplicon_set_name:
         ui-name: |
             Output AmpliconSet name
         short-hint: |
-            If input AmpliconSet is updated by writing the traits to an existing associated row AttributeMapping, the default output AmpliconSet will save over the input. Enter a new name to avoid that
+            For AmpliconSet workflow only. A new AmpliconSet object will be created due to an updated AttributeMapping reference. Enter new name to avoid saving over input AmpliconSet
 
 description : |
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar efficitur felis, quis tincidunt sem congue at. Vivamus ornare feugiat faucibus. Fusce tincidunt mattis nunc, nec varius purus convallis quis. Nulla facilisi. In at magna dolor. Suspendisse sit amet felis at arcu auctor dapibus vitae pharetra dui. Nam semper mi quis tortor fermentum mollis. Donec a arcu pharetra, rutrum dolor vitae, rutrum mauris. Donec ornare fringilla sagittis. Nam laoreet est in elementum malesuada. Vestibulum id mi eget urna hendrerit feugiat. Donec et ultrices nulla. Phasellus diam eros, dapibus at tempus nec, semper vel ante.</p>
 
-    <p>Curabitur auctor, metus at tristique euismod, odio elit tincidunt neque, a facilisis sem massa convallis dolor. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc ut hendrerit tellus. Nunc lacinia laoreet finibus. Etiam vitae sagittis enim. Fusce consectetur porta est eu pretium. In hac habitasse platea dictumst. Integer pellentesque sit amet sapien id venenatis. Nullam ac risus at orci eleifend aliquet. Vestibulum elit purus, euismod a nibh quis, pellentesque semper leo. Curabitur ullamcorper felis hendrerit nunc egestas, sit amet pharetra sapien porttitor. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Maecenas hendrerit ipsum a ligula aliquet vestibulum. Duis a ante urna. Aenean ante neque, rhoncus id luctus ut, accumsan vel nunc.</p>
+    <p>
+    See 'FAPROTAX usage' link below on how to navigate the files that FAPROTAX can generate.
+    Note that not all possible files are generated
+    </p>
+    
+    <p>
+    Supports two workflows, depending on the input type.
+    </p>
 
-    <p>Pellentesque accumsan aliquet magna, id consectetur tellus condimentum eu. Suspendisse elit dui, ornare ac leo eget, tincidunt feugiat orci. Maecenas auctor gravida lacinia. Mauris interdum nisi vel gravida varius. Nullam tempus, purus eget posuere aliquet, odio elit semper massa, quis facilisis massa odio vitae lacus. Fusce varius enim a mi vehicula tempus. Maecenas faucibus tellus ipsum, at venenatis ipsum auctor et. Suspendisse sem mi, dignissim id porta efficitur, auctor eget magna. Vivamus varius purus nulla, porttitor euismod lorem cursus quis. Nulla sit amet eros nec sem ultrices pulvinar.</p>
+    <p>
+    Thanks to Pamela Weisenhorn, Paramvir Dehal, and other KBase leads for designing the behavior of this app.
+    </p>
 
 publications:
     -
@@ -50,5 +58,11 @@ publications:
 
     -
         display-text : |
-            FAPROTAX source:
+            FAPROTAX download
         link: https://pages.uoregon.edu/slouca/LoucaLab/archive/FAPROTAX/
+
+    -
+        display-text : |
+            FAPROTAX usage
+        link: |
+            http://www.loucalab.com/archive/FAPROTAX/lib/php/index.php?section=Instructions

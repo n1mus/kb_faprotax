@@ -11,9 +11,6 @@ WORK_DIR = /kb/module/work/tmp
 EXECUTABLE_SCRIPT_NAME = run_$(SERVICE_CAPS)_async_job.sh
 STARTUP_SCRIPT_NAME = start_server.sh
 TEST_SCRIPT_NAME = run_tests.sh
-TEST_CFG_NAME = test.cfg
-TEST_CFG_RELPATH = $(TEST_DIR)/$(TEST_CFG_NAME)
-TEST_PYPATH=test
 
 .PHONY: test
 
@@ -57,10 +54,7 @@ build-test-script:
 	echo 'echo "...done removing temp files."' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'export PYTHONPATH=$$script_dir/../$(LIB_DIR):$$PATH:$$PYTHONPATH' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	echo 'cd $$script_dir/../$(TEST_DIR)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
-	echo 'source <(grep TEST_PYPATH $(TEST_CFG_NAME))' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME) # set TEST_PYPATH, the pos arg for nose
-	echo 'source <(grep DO_PATCH $(TEST_CFG_NAME))' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME) # set DO_PATCH
-	echo 'export TEST_CONFIG=$$script_dir/../test/$(TEST_CFG_NAME)' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME) # put test/test.cfg in env
-	echo 'python -m nose --with-coverage --cover-package=$(SERVICE_CAPS) --cover-html --cover-html-dir=/kb/module/work/test_coverage --nocapture  --nologcapture --config $(TEST_CFG_NAME) $$TEST_PYPATH' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
+	echo 'python -m nose --with-coverage --cover-package=$(SERVICE_CAPS) --cover-html --cover-html-dir=/kb/module/work/test_coverage --nocapture  --nologcapture .' >> $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 	chmod +x $(TEST_DIR)/$(TEST_SCRIPT_NAME)
 
 test:
