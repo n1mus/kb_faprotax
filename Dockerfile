@@ -24,7 +24,7 @@ ENV PATH=/opt/FAPROTAX_1.2.1:$PATH
 
 RUN conda create --yes --name py2 python=2.7 numpy
 
-RUN pip install numpy pandas
+RUN pip install numpy==1.15.4 pandas
 RUN pip install dotmap
 
 ENV PYTHONUNBUFFERED=True
