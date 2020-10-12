@@ -12,9 +12,22 @@
 ########################## AmpliconSet et al #######################################################
 ################################ CI ################################################################
 ####################################################################################################
+
 _17770 = '48666/2/9' # AmpliconSet containing 17770 entries
-_17770_AmpMat = '48666/9/8' # accessory AmpliconMatrix to AmpliconSet
+_17770_AmpMat = '48666/9/8' # accessory AmpliconMatrix to AmpliconSet. has too old sample_set_ref and no amplicon_set_ref
 _17770_AttrMap = '48666/8/8' # accessory AttributeMapping to AmpliconMatrix
+
+''' This set: ran through PICRUSt2
+_17770 = '48666/10/2' # AmpliconSet containing 17770 entries
+_17770_AmpMat = '48666/9/9' # accessory AmpliconMatrix to AmpliconSet
+_17770_AttrMap = '48666/8/11' # accessory AttributeMapping to AmpliconMatrix
+
+'''
+
+_17770_first10 = '48666/16/1'
+_17770_first10_AmpMat = '50387/147/3'
+_17770_first10_AttrMap = '50387/152/1'
+
 
 _17770_first50 = "48402/9/2" # AmpliconSet containing first 50 of 17770 entries. row AttributeMapping has all 1770 entries (?)
 
@@ -42,6 +55,6 @@ refseq_dup = '44732/61/3' # same GenomeSet (in copied narrative) but with duplic
 ########### allow all UPAs, including _17770* variables, to be imported with * #####################
 ####################################################################################################
 ####################################################################################################
-__all__ = [x for x in dir() if len([1 for key in ['17770', 'secret', 'refseq'] if key in x]) > 0]
+__all__ = [x for x in dir() if len([1 for key in ['17770', 'secret', 'refseq', 'test'] if key in x]) > 0]
 
 

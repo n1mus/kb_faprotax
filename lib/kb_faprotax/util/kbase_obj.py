@@ -326,7 +326,6 @@ class AmpliconMatrix:
         * amp_set - referring AmpliconSet object
         * name
         * obj
-        * row_attrmap_upa
         '''
         self.upa = upa
         self.amp_set = amp_set
@@ -345,7 +344,8 @@ class AmpliconMatrix:
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
-        self.row_attrmap_upa = self.obj.get('row_attributemapping_ref') # optional field
+
+        #dprint('self.upa', 'self.obj', run=locals(), max_lines=None)
 
 
     def to_OTU_table(self, flpth=None):
@@ -376,10 +376,6 @@ class AmpliconMatrix:
             df.to_csv(flpth, sep='\t')
 
         return df
-
-
-    def update_row_attributemapping_ref(self, row_attrmap_upa_new):
-        self.obj['row_attributemapping_ref'] = row_attrmap_upa_new
 
 
     def save(self):

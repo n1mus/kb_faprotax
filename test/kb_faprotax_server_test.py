@@ -37,7 +37,7 @@ from util.upa import * # upa library
 ######### TOGGLE PATCH ###############
 ######################################
 ###################################### 
-do_patch = False
+do_patch = True 
 
 if do_patch:
     patch_ = patch
@@ -65,7 +65,7 @@ class kb_faprotaxTest(unittest.TestCase):
         from kb_faprotax.util.workflow import parse_faprotax_functions
 
         flnm = 'groups2records_dense.tsv'
-        flpth = os.path.join(testData_dir, 'by_dataset_input/refseq/return/FAPROTAX_output, flnm)
+        flpth = os.path.join(testData_dir, 'by_dataset_input/refseq/return/FAPROTAX_output', flnm)
         
         r2g_d = parse_faprotax_functions(flpth)
 
@@ -374,9 +374,9 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
                 })
             
 
-    @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *args: get_mock_dfu('17770'))
+    #@patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('17770'))
     @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('17770'))
-    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *args, **kwargs: get_mock_kbr())
+    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconSet_input_against_reference(self):
         '''
         Check results against answers if full pipeline is run (i.e., no mocks)
@@ -433,7 +433,7 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
 
         # id to attribute
         res_id2attr_d = {id: attr_l[ind] for id, attr_l in instances_d.items()}
-        ans_id2attr_d = self.parse_answers_file()
+        ans_id2attr_d = parse_answers_file()
 
         # check ids equal set
         res_ids = sorted(list(res_id2attr_d.keys()))
@@ -472,7 +472,12 @@ D_5__Sva0485:u; D_6__Sva0485:u; D_7__Sva0485:u; D_8__Sva0485:u; D_9__Sva0485:u; 
         with open(f'/kb/module/work/tmp/diff.html', 'w') as fp:
             fp.write('\n'.join(html_l))
 
-                 
+    def test_AmpliconSet_FunctionalProfile(self):
+        ret = self.serviceImpl.run_FAPROTAX(
+            self.ctx, {
+                **self.params_ws,
+                'input_upa': _17770_first10,
+            })                
 
 
 
@@ -557,16 +562,17 @@ e.g., filter to tests in `run_tests`
 Comment out parts like `delattr` to deactivate
 '''
 unit_tests = ['test_parse_faprotax_functions', 'test_run_check',]
-AmpliconSet_tests = unit_tests + ['test_AmpliconSet_input_against_reference', 
+AmpliconSet_tests = ['test_AmpliconSet_input_against_reference', 
     'test_AmpliconSet_no_row_AttributeMapping', 'test_AmpliconSet_no_taxonomy_no_row_AttributeMapping',
-    'test_AmpliconSet_methods', 'test_AmpliconMatrix_methods', 'test_AttributeMapping_methods']
-GenomeSet_tests = unit_tests + ['test_GenomeSet_input', 'test_GenomeSet_methods', 'test_Genome_methods',
+    'test_AmpliconSet_methods', 'test_AmpliconMatrix_methods', 'test_AttributeMapping_methods',
+    'test_AmpliconSet_FunctionalProfile']
+GenomeSet_tests = ['test_GenomeSet_input', 'test_GenomeSet_methods', 'test_Genome_methods',
     'test_dummy_OTU_table_abundance', 'test_dup_GenomeSet']
-run_tests = ['test_AmpliconMatrix_methods']
+run_tests = ['test_AmpliconSet_FunctionalProfile']
 
 for key, value in kb_faprotaxTest.__dict__.copy().items():
     if key.startswith('test') and callable(value):
-        if key not in AmpliconSet_tests:
+        if key not in GenomeSet_tests:
             delattr(kb_faprotaxTest, key)
             pass
 

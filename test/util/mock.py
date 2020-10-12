@@ -9,6 +9,7 @@ from installed_clients.KBaseReportClient import KBaseReport
 from installed_clients.WorkspaceClient import Workspace
 
 from kb_faprotax.util.dprint import dprint
+from kb_faprotax.util.varstash import Var
 from kb_faprotax.util.workflow import run_check
 from .upa import *
 
@@ -29,6 +30,39 @@ mock_ws = create_autospec(Workspace, instace=True) # get_object_info3
 mock_run_check = create_autospec(run_check) # avoid lengthy runs
 
 
+#####
+#####
+#####
+def mock_dfu_save_objects(params):
+    params_str = str(params)
+    if len(params_str) > 100: params_str = params_str[:100] + ' ...'
+    logging.info('Mocking `dfu.save_objects` with `params=%s`' % params_str)
+    
+
+#####
+#####
+#####
+def mock_dfu_get_objects(params):
+    logging.info('Mocking `dfu.get_objects` with `params=%s`' % str(params))
+
+    upa = params['object_refs'][0]
+    flnm = {
+        _17770: 'get_objects_AmpliconSet.json',
+        _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
+        _17770_AttrMap: 'get_objects_AttributeMapping.json',
+        secret: 'get_objects_AmpliconSet.json',
+        secret_AmpMat: 'get_objects_AmpliconMatrix.json',
+        }[upa]
+    flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
+
+    with open(flpth) as f:
+        obj = json.load(f)
+
+    return obj
+
+#####
+#####
+#####
 def get_mock_dfu(dataset):
     '''
     Pass in `dataset=None` to get reset mock_dfu
@@ -82,6 +116,9 @@ def get_mock_dfu(dataset):
 
 
 
+#####
+#####
+#####
 def get_mock_kbr(dummy_dataset=None): # allow dummy param since the other mocks take `dataset` arg
     # reset
     mock_kbr.reset_mock(return_value=True, side_effect=True)
@@ -100,6 +137,9 @@ def get_mock_kbr(dummy_dataset=None): # allow dummy param since the other mocks 
 
 
 
+#####
+#####
+#####
 def get_mock_run_check(dataset):
     # reset
     mock_run_check.reset_mock()

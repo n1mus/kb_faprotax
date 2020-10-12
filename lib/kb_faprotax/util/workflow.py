@@ -60,8 +60,32 @@ def parse_faprotax_functions(groups2records_table_dense_flpth, dlm=',') -> dict:
     return r2g_d
 
 
+####################################################################################################
+def map_groups2records_to_groups2ids(groups2records_table_flpth, groups2ids_table_flpth, amp_mat, amp_set):
+
+    g2r_df = pd.read_csv(groups2records_table_flpth, sep='\t', comment='#')
+
+    row_ids = amp_mat.obj['data']['row_ids'] # row ids of AmpliconMatrix
+    taxStr_l = amp_set.get_taxStr_l(row_ids) # corresponding taxonomies of AmpliconMatrix
+
+    if Var.debug:
+        # check FAPROTAX didn't reorder the rows
+        assert g2r_df['record'].tolist() == taxStr_l
+
+    g2i_df = g2r_df.drop('record', axis=1) # drop taxonomy col
+    g2i_df.index = row_ids # add ids as index
+    g2i_df.index.name = 'id'
+    
+    g2i_df.to_csv(groups2ids_table_flpth, sep='\t', header=True, index=True)
 
 
+    
+
+
+
+####################################################################################################
+####################################################################################################
+####################################################################################################
 ####################################################################################################
 ####################################################################################################
 def do_GenomeSet_workflow():
@@ -101,7 +125,7 @@ def do_GenomeSet_workflow():
     os.mkdir(Var.out_dir)
     os.mkdir(sub_tables_dir)
 
-    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
+    collapsed_func_table_flpth = os.path.join(Var.out_dir, 'collapsed_func_table.tsv')
     report_flpth = os.path.join(Var.out_dir, 'report.txt')
     groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
     groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
@@ -114,7 +138,7 @@ def do_GenomeSet_workflow():
         Var.cmd_flpth,
         '--input_table', otu_table_flpth,
         '--input_groups_file', Var.db_flpth,
-        '--out_collapsed', func_table_flpth,
+        '--out_collapsed', collapsed_func_table_flpth,
         '--out_report', report_flpth,
         '--out_sub_tables_dir', sub_tables_dir,
         '--out_groups2records_table', groups2records_table_flpth,
@@ -213,17 +237,15 @@ def do_GenomeSet_workflow():
         'report_ref': report_output['ref'],
     }
 
-    return [output]
-
-
-
-
-
+    return output
 
     
 
 
 
+####################################################################################################
+####################################################################################################
+####################################################################################################
 ####################################################################################################
 ####################################################################################################
 def do_AmpliconSet_workflow():
@@ -240,8 +262,8 @@ def do_AmpliconSet_workflow():
 
     amp_mat.to_OTU_table()
 
-    if amp_mat.row_attrmap_upa:
-        row_attrmap = AttributeMapping(amp_mat.row_attrmap_upa)
+    if amp_mat.obj['row_attributemapping_ref'] is not None:
+        row_attrmap = AttributeMapping(amp_mat.obj['row_attributemapping_ref'])
         
     else:
         msg = (
@@ -251,7 +273,10 @@ def do_AmpliconSet_workflow():
         Var.warnings.append(msg)
 
 
-
+    # for legacy AmpliconMatrix with no amplicon_set_ref
+    # makes saving FunctionalProfile possible
+    if amp_mat.obj.get('amplicon_set_ref') is None: 
+        amp_mat.obj['amplicon_set_ref'] = amp_set.upa
 
 
     #
@@ -273,7 +298,7 @@ def do_AmpliconSet_workflow():
     os.mkdir(Var.out_dir)
     os.mkdir(sub_tables_dir)
 
-    func_table_flpth = os.path.join(Var.out_dir, 'func_table.tsv')
+    collapsed_func_table_flpth = os.path.join(Var.out_dir, 'collapsed_func_table.tsv')
     report_flpth = os.path.join(Var.out_dir, 'report.txt')
     groups2records_table_flpth = os.path.join(Var.out_dir, 'groups2records.tsv')
     groups2records_table_dense_flpth = os.path.join(Var.out_dir, 'groups2records_dense.tsv')
@@ -286,7 +311,7 @@ def do_AmpliconSet_workflow():
         Var.cmd_flpth,
         '--input_table', taxon_table_flpth,
         '--input_groups_file', Var.db_flpth,
-        '--out_collapsed', func_table_flpth,
+        '--out_collapsed', collapsed_func_table_flpth,
         '--out_report', report_flpth,
         '--out_sub_tables_dir', sub_tables_dir,
         '--out_groups2records_table', groups2records_table_flpth,
@@ -294,7 +319,7 @@ def do_AmpliconSet_workflow():
         '--out_group_overlaps', group_overlaps_flpth,
         '--out_group_definitions_used', group_definitions_used_flpth,
         '--row_names_are_in_column', 'taxonomy',
-        '--omit_columns', '1',
+        '--omit_columns', '1', # amplicon ID column
         '--verbose',
         '|& tee', log_flpth
         ])
@@ -324,7 +349,7 @@ def do_AmpliconSet_workflow():
 
 
     Var.objects_created = [] # TODO get this from return
-    if amp_mat.row_attrmap_upa:
+    if amp_mat.obj['row_attributemapping_ref'] is not None:
 
         attribute = 'FAPROTAX Functions'
         source = 'kb_faprotax/run_FAPROTAX'
@@ -336,7 +361,7 @@ def do_AmpliconSet_workflow():
         row_attrmap.update_attribute(ind, id2functions_d)
         row_attrmap_upa_new = row_attrmap.save()
 
-        amp_mat.update_row_attributemapping_ref(row_attrmap_upa_new)
+        amp_mat.obj['row_attributemapping_ref'] = row_attrmap_upa_new
         amp_mat_upa_new = amp_mat.save()
 
         amp_set.update_amplicon_matrix_ref(amp_mat_upa_new)
@@ -348,6 +373,61 @@ def do_AmpliconSet_workflow():
             {'ref': amp_set_upa_new, 'description': 'Updated AmpliconMatrix reference'},
         ]
 
+
+
+
+    #
+    ##
+    ### make FunctionalProfiles
+    ####
+    #####
+
+                 
+    ### Organism FP ###
+
+    # map groups2records back to groups2ids
+    groups2ids_table_flpth = os.path.join(Var.run_dir, 'groups2ids.tsv')
+    map_groups2records_to_groups2ids(groups2records_table_flpth, groups2ids_table_flpth, amp_mat, amp_set)
+
+
+    #dprint('amp_mat.obj', run=locals(), max_lines=None)
+
+    # TODO check that old or new AmpliconMatrix has amplicon_set_ref and sample_set_ref so errors gracefully?
+
+    func_prof_amplicon_upa = Var.fpu.import_func_profile(dict(
+        workspace_id=Var.params['workspace_id'],
+        func_profile_obj_name='%s.FAPROTAX_groups2records' % amp_mat.name,
+        original_matrix_ref=amp_mat_upa_new, # TODO use amp_set.amp_mat_upa both FPs, after loop reference is resolved.
+        profile_file_path=groups2ids_table_flpth,
+        profile_type='amplicon',
+        profile_category='organism',
+        data_epistemology='predicted',
+        epistemology_method='FAPROTAX',
+        description='Amplicon vs FAPROTAX functions (binary association). Double inference through taxonomic assignment and FAPROTAX',
+    ))['func_profile_ref']
+
+
+    
+    ### Community FP ###
+
+    func_prof_sample_upa = Var.fpu.import_func_profile(dict(
+        workspace_id=Var.params['workspace_id'],
+        func_profile_obj_name='%s.FAPROTAX_func_table' % amp_mat.name,
+        original_matrix_ref=amp_mat_upa_new, 
+        profile_file_path=collapsed_func_table_flpth,
+        profile_type='mg',
+        profile_category='community',
+        data_epistemology='predicted',
+        epistemology_method='FAPROTAX',
+        description='Metagenomic sample vs FAPROTAX functions'
+    ))['func_profile_ref']
+
+
+    Var.objects_created.extend([
+        dict(ref=func_prof_amplicon_upa, description='Amplicon FunctionalProfile'),
+        dict(ref=func_prof_sample_upa, description='Sample FunctionalProfile'),
+    ])
+    
 
 
     #
@@ -382,7 +462,7 @@ def do_AmpliconSet_workflow():
 
     dprint('output', run=locals())
 
-    return [output]
+    return output
 
 
 

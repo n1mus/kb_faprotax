@@ -12,6 +12,7 @@ from dotmap import DotMap
 from installed_clients.KBaseReportClient import KBaseReport
 from installed_clients.DataFileUtilClient import DataFileUtil
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.FunctionalProfileUtilClient import FunctionalProfileUtil
 
 
 from .util.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
@@ -92,8 +93,9 @@ class kb_faprotax:
             'ws': Workspace(self.workspace_url),
             'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
             'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
+            'fpu': FunctionalProfileUtil(self.callback_url, service_ver='dev'), # TODO overhead?
             'params': params,
-            'run_dir': os.path.join(self.shared_folder, str(uuid.uuid4())),
+            'run_dir': os.path.join(self.shared_folder, 'kbfptx_' + str(uuid.uuid4())),
             'warnings': [],
         })
 
@@ -117,10 +119,10 @@ class kb_faprotax:
         oi = Var.ws.get_object_info3({'objects': [{'ref': params['input_upa']}]})['infos'][0]
 
         if oi[2].startswith('KBaseSearch.GenomeSet'):
-            return do_GenomeSet_workflow()
+            output = do_GenomeSet_workflow()
 
         elif oi[2].startswith('KBaseExperiments.AmpliconSet'):
-            return do_AmpliconSet_workflow()
+            output = do_AmpliconSet_workflow()
 
         else:
             raise Exception('Unknown type `%s` for `input_upa`' % oi[2])
