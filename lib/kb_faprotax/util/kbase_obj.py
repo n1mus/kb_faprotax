@@ -1,3 +1,4 @@
+import re
 import os
 import logging
 import pandas as pd
@@ -8,7 +9,6 @@ import json
 from .dprint import dprint
 from .varstash import Var
 from .error import *
-from .message import *
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
@@ -201,7 +201,7 @@ class Genome:
             parsed = urlparse(Var.kbase_endpoint) 
             return '%s://%s/#dataview/%s' % (parsed.scheme, parsed.netloc, self.upa) 
         
-
+"""
 ####################################################################################################
 ####################################################################################################
 class AmpliconSet:
@@ -312,23 +312,21 @@ class AmpliconSet:
 
         return upa_new
 
-
+"""
 
 
 ####################################################################################################
 ####################################################################################################
 class AmpliconMatrix:
 
-    def __init__(self, upa, amp_set: AmpliconSet):
+    def __init__(self, upa):
         '''
         Instance variables created during init:
         * upa
-        * amp_set - referring AmpliconSet object
         * name
         * obj
         '''
         self.upa = upa
-        self.amp_set = amp_set
 
         self._get_obj()
 
@@ -340,7 +338,8 @@ class AmpliconMatrix:
             'object_refs': [self.upa]
         })
 
-        if Var.debug: write_json(obj, 'get_objects_AmpliconMatrix.json')
+        if Var.debug: 
+            pass # TODO annotate run_dir with input name
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
@@ -348,7 +347,7 @@ class AmpliconMatrix:
         #dprint('self.upa', 'self.obj', run=locals(), max_lines=None)
 
 
-    def to_OTU_table(self, flpth=None):
+    def to_OTU_table(self, tax_l, flpth=None):
         '''
         `taxonomy` is index
         `OTU_Id` is first column
@@ -365,14 +364,14 @@ class AmpliconMatrix:
 
         df = pd.DataFrame(
             data, 
-            index=self.amp_set.get_taxStr_l(row_ids), 
+            index=tax_l,#self.row_attr_map.get_tax_l(row_ids), 
             columns=col_ids
             )
         df.index.name = "taxonomy"
         df['OTU_Id'] = row_ids # add OTU_Id for identification purposes (?)
         df = df[['OTU_Id'] + col_ids] # reorder
 
-        if flpth != None:
+        if flpth is not None:
             df.to_csv(flpth, sep='\t')
 
         return df
@@ -421,6 +420,32 @@ class AttributeMapping:
 
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
+
+
+
+    def get_tax_attribute(self, regex_l):
+        '''
+        Case insensitive
+        regex_l gives priority of regexes
+        '''
+        attribute_l = [d['attribute'] for d in self.obj['attributes']]
+
+        for regex in regex_l:
+            for i, attribute in enumerate(attribute_l):
+                if re.search(regex, attribute.lower()) is not None:
+                    return i, attribute
+        return None, None
+
+
+    def get_tax_l(self, tax_ind, id_l):
+        tax_l = []
+
+        for id in id_l:
+            tax_l.append(
+                self.obj['instances'][id][tax_ind]
+            )
+
+        return tax_l
 
 
 

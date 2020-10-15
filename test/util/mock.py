@@ -16,9 +16,7 @@ from .upa import *
 
 ##################################
 ##################################
-
 testData_dir = '/kb/module/test/data'
-
 ##################################
 ##################################
 
@@ -26,10 +24,10 @@ testData_dir = '/kb/module/test/data'
 
 mock_dfu = create_autospec(DataFileUtil, instance=True) # get_objects, save_objects (for AmpliconSet workflow)
 mock_kbr = create_autospec(KBaseReport, instance=True) # create_extended_report
-mock_ws = create_autospec(Workspace, instace=True) # get_object_info3
+mock_ws = create_autospec(Workspace, instance=True) # get_object_info3
 mock_run_check = create_autospec(run_check) # avoid lengthy runs
 
-
+"""
 #####
 #####
 #####
@@ -47,11 +45,9 @@ def mock_dfu_get_objects(params):
 
     upa = params['object_refs'][0]
     flnm = {
-        _17770: 'get_objects_AmpliconSet.json',
-        _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
-        _17770_AttrMap: 'get_objects_AttributeMapping.json',
-        secret: 'get_objects_AmpliconSet.json',
-        secret_AmpMat: 'get_objects_AmpliconMatrix.json',
+        enigma50by30_noAttrMaps_noSampleSet = 'AmpliconMatrix.json',
+        enigma50by30_noSampleSet = 'AmpliconMatrix.json',
+        enigma50by30 = 'AmpliconMatrix.json',
         }[upa]
     flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
 
@@ -59,6 +55,7 @@ def mock_dfu_get_objects(params):
         obj = json.load(f)
 
     return obj
+"""
 
 #####
 #####
@@ -68,10 +65,6 @@ def get_mock_dfu(dataset):
     Pass in `dataset=None` to get reset mock_dfu
     It's a global so it can be edited in test-method
     '''
-    # validate
-    if dataset not in ['17770', 'secret', None]:
-        raise NotImplementedError('Input dataset not recognized')
-
     # reset
     mock_dfu.reset_mock(return_value=True, side_effect=True)
     
@@ -97,11 +90,7 @@ def get_mock_dfu(dataset):
 
         upa = params['object_refs'][0]
         flnm = {
-            _17770: 'get_objects_AmpliconSet.json',
-            _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
-            _17770_AttrMap: 'get_objects_AttributeMapping.json',
-            secret: 'get_objects_AmpliconSet.json',
-            secret_AmpMat: 'get_objects_AmpliconMatrix.json',
+                # TODO
             }[upa]
         flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
 

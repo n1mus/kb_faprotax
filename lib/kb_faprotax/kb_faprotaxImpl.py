@@ -15,10 +15,10 @@ from installed_clients.WorkspaceClient import Workspace
 from installed_clients.FunctionalProfileUtilClient import FunctionalProfileUtil
 
 
-from .util.kbase_obj import AmpliconSet, AmpliconMatrix, AttributeMapping
+from .util.kbase_obj import AmpliconMatrix, AttributeMapping
 from .util.dprint import dprint
 from .util.varstash import Var, reset_Var # `Var` holds globals, `reset` clears everything but config stuff
-from .util.workflow import do_AmpliconSet_workflow, do_GenomeSet_workflow
+from .util.workflow import do_AmpliconMatrix_workflow, do_GenomeSet_workflow
 
 
 #END_HEADER
@@ -121,8 +121,8 @@ class kb_faprotax:
         if oi[2].startswith('KBaseSearch.GenomeSet'):
             output = do_GenomeSet_workflow()
 
-        elif oi[2].startswith('KBaseExperiments.AmpliconSet'):
-            output = do_AmpliconSet_workflow()
+        elif oi[2].startswith('KBaseMatrices.AmpliconMatrix'):
+            output = do_AmpliconMatrix_workflow()
 
         else:
             raise Exception('Unknown type `%s` for `input_upa`' % oi[2])
