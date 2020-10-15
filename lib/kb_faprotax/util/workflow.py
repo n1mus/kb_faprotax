@@ -245,7 +245,7 @@ def do_AmpliconMatrix_workflow():
     row_attr_map_upa_new = row_attr_map.save()
 
     amp_mat.obj['row_attributemapping_ref'] = row_attr_map_upa_new
-    amp_mat_upa_new = amp_mat.save()
+    amp_mat_upa_new = amp_mat.save(name=Var.params.get('output_amplicon_matrix_name'))
 
     Var.objects_created = [
         {'ref': row_attr_map_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 

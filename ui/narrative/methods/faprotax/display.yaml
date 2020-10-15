@@ -28,11 +28,11 @@ parameters :
             Input object
         short-hint : |
             Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>
-    output_amplicon_set_name:
+    output_amplicon_matrix_name:
         ui-name: |
-            Output AmpliconSet name
+            Output AmpliconMatrix name
         short-hint: |
-            If input AmpliconSet is updated by writing the traits to an existing associated row AttributeMapping, the default output AmpliconSet will save over the input. Enter a new name to avoid that
+            If input AmpliconMatrix is updated by writing traits to existing associated row AttributeMapping, the output AmpliconMatrix will save over the input by default. Enter a new name to avoid that
 
 description : |
     <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar efficitur felis, quis tincidunt sem congue at. Vivamus ornare feugiat faucibus. Fusce tincidunt mattis nunc, nec varius purus convallis quis. Nulla facilisi. In at magna dolor. Suspendisse sit amet felis at arcu auctor dapibus vitae pharetra dui. Nam semper mi quis tortor fermentum mollis. Donec a arcu pharetra, rutrum dolor vitae, rutrum mauris. Donec ornare fringilla sagittis. Nam laoreet est in elementum malesuada. Vestibulum id mi eget urna hendrerit feugiat. Donec et ultrices nulla. Phasellus diam eros, dapibus at tempus nec, semper vel ante.</p>

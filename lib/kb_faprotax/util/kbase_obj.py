@@ -377,13 +377,13 @@ class AmpliconMatrix:
         return df
 
 
-    def save(self):
+    def save(self, name=None):
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
             "objects": [{
                 "type": "KBaseMatrices.AmpliconMatrix",
                 "data": self.obj,
-                "name": self.name,
+                "name": self.name if name is None else name,
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 

@@ -276,6 +276,7 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             self.ctx, {
                 **self.params_ws,
                 'input_upa': enigma50by30,
+                'output_amplicon_matrix_name': 'a_name',
             })
 
 
