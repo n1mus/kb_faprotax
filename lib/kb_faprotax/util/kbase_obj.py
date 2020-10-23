@@ -16,21 +16,230 @@ pd.set_option('display.width', 1000)
 pd.set_option('display.max_colwidth', 20)
 
 
-def write_json(obj, flnm, AmpliconSet=False):
-    '''
-    For debugging/testing
-    '''
-    if 'run_dir' not in Var:
-        import uuid
-        Var.run_dir = os.path.join('/kb/module/work/tmp', str(uuid.uuid4()))
-        os.mkdir(Var.run_dir)
 
-    flpth = os.path.join(Var.run_dir, flnm)
-    with open(flpth, 'w') as f:
-        json.dump(obj, f)
 
-    if AmpliconSet == True:
-        dprint('touch %s' % os.path.join(Var.run_dir, '#' + obj['data'][0]['info'][1]), run='cli') # annotate run_dir with name
+####################################################################################################
+####################################################################################################
+class AmpliconMatrix:
+
+    def __init__(self, upa):
+        '''
+        Instance variables created during init:
+        * upa
+        * name
+        * obj
+        '''
+        self.upa = upa
+
+        self._get_obj()
+
+
+    def _get_obj(self):
+        logging.info('Loading object info for AmpliconMatrix `%s`' % self.upa)
+
+        obj = Var.dfu.get_objects({
+            'object_refs': [self.upa]
+        })
+
+        self.name = obj['data'][0]['info'][1]
+        self.obj = obj['data'][0]['data']
+
+        # comment run_dir with AmpliconMatrix name
+        dprint('touch %s' % os.path.join(Var.run_dir, '#' + self.name), run='cli')
+
+
+    def to_OTU_table(self, tax_l, flpth=None):
+        '''
+        `taxonomy` is index
+        `OTU_Id` is first column
+
+        This interface is used for testing
+        Return df for testing
+        '''
+
+        logging.info(f"Parsing AmpliconMatrix data from object")
+
+        data = np.array(self.obj['data']['values'], dtype=float)
+        row_ids = self.obj['data']['row_ids']
+        col_ids = self.obj['data']['col_ids']
+
+        df = pd.DataFrame(
+            data, 
+            index=tax_l,#self.row_attr_map.get_tax_l(row_ids), 
+            columns=col_ids
+            )
+        df.index.name = "taxonomy"
+        df['OTU_Id'] = row_ids # add OTU_Id for identification purposes (?)
+        df = df[['OTU_Id'] + col_ids] # reorder
+
+        if flpth is not None:
+            df.to_csv(flpth, sep='\t')
+
+        return df
+
+    def _map_id2attr_ids(self, id2attr, axis='row'):
+        '''
+        Parameters
+        ----------
+        id2attr - AmpliconMatrix row_ids to attribute you want to give AttributeMapping
+
+        Behavior
+        --------
+        Swap out ids in id2attr so they end up mapping AttributeMapping ids to attributes
+        '''
+        if f'{axis}_attributemapping_ref' not in self.obj:
+            raise Exception(
+                'Trying to map AmpliconMatrix %s_ids to %s AttributeMapping ids '
+                "when AmpliconMatrix doesn't have %s AttributeMapping"
+                % (axis, axis, axis)
+            )
+        elif f'{axis}_mapping' not in self.obj:
+            msg = (
+                'Dude this object has a %s_attributemapping_ref '
+                'and needs a %s_mapping. Letting it slide for now.'
+                % (axis, axis)
+            )
+            logging.warning(msg)
+            var.warnings.append(msg)
+            return id2attr
+
+        id2attr = {
+            self.obj[f'{axis}_mapping'][id]: attr
+            for id, attr in id2attr.items()
+        }
+
+        return id2attr
+
+    def save(self, name=None):
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": "KBaseMatrices.AmpliconMatrix",
+                "data": self.obj,
+                "name": self.name if name is None else name,
+                "extra_provenance_input_refs": [self.upa]
+             }]})[0]
+
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+
+        return upa_new
+
+
+
+
+####################################################################################################
+####################################################################################################
+class AttributeMapping:
+
+    def __init__(self, upa, amp_mat):
+        '''
+        Instance variables created at init time:
+        * upa
+        * amp_mat
+        * name
+        * obj
+        '''
+        self.upa = upa
+        self.amp_mat = amp_mat
+        self._get_obj()
+
+
+    def _get_obj(self):
+        logging.info('Loading object info for AttributeMapping `%s`' % self.upa)
+
+        obj = Var.dfu.get_objects({
+            'object_refs': ['%s;%s' % (amp_mat.upa, self.upa)]
+        })
+
+        self.name = obj['data'][0]['info'][1]
+        self.obj = obj['data'][0]['data']
+
+
+
+    def get_tax_attribute(self, regex_l):
+        '''
+        Case insensitive
+        regex_l gives priority of regexes
+        '''
+        attribute_l = [d['attribute'] for d in self.obj['attributes']]
+
+        for regex in regex_l:
+            for i, attribute in enumerate(attribute_l):
+                if re.search(regex, attribute.lower()) is not None:
+                    return i, attribute
+        return None, None
+
+
+    def get_tax_l(self, tax_ind, id_l):
+        tax_l = []
+
+        for id in id_l:
+            tax_l.append(
+                self.obj['instances'][id][tax_ind]
+            )
+
+        return tax_l
+
+
+
+    def map_update_attribute(self, ind: int, id2attr: dict, map_ids_first=True):
+        '''
+        First map ids of `id2attr` to AttributeMapping ids using amp_mat's row_mapping
+        Update attribute at index `ind` using mapping `id2attr`
+        '''
+        if map_ids_first is True:
+            id2attr = self.amp_mat._map_id2attr_ids(id2attr, axis='row')
+
+        for id, attr in id2attr.items():
+            self.obj['instances'][id][ind] = attr
+
+
+    def add_attribute_slot(self, attribute, source) -> int:
+        '''
+        If attribute not already entered, add slot for it
+        Return its index in the attributes/instances
+        '''
+        
+        # check if already exists
+        for ind, attr_d in enumerate(self.obj['attributes']):
+            if attr_d['attribute'] == attribute and attr_d['source'] == source:
+                msg = msg_overwriteAttribute % (attribute, source, self.name)
+                logging.warning(msg)
+                Var.warnings.append(msg)
+                return ind
+
+        # append slot to `attributes`
+        self.obj['attributes'].append({
+            'attribute': attribute,
+            'source': source,
+            })
+
+        # append slots to `instances` 
+        for attr_l in self.obj['instances'].values():
+            attr_l.append('')
+
+        return len(attr_l) - 1
+
+
+    def save(self):
+        
+        info = Var.dfu.save_objects({
+            'id': Var.params['workspace_id'],
+            "objects": [{
+                "type": "KBaseExperiments.AttributeMapping",
+                "data": self.obj,
+                "name": self.name,
+                "extra_provenance_input_refs": [self.upa]
+             }]})[0]
+
+        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+
+        dprint('upa_new', run=locals())
+
+        return upa_new
+
+
+
 
 
 
@@ -200,307 +409,4 @@ class Genome:
         else:
             parsed = urlparse(Var.kbase_endpoint) 
             return '%s://%s/#dataview/%s' % (parsed.scheme, parsed.netloc, self.upa) 
-        
-"""
-####################################################################################################
-####################################################################################################
-class AmpliconSet:
-
-    def __init__(self, upa):
-        '''
-        Instance variables created at init time:
-        * upa
-        * name
-        * amp_mat_upa
-        * obj
-        '''
-        self.upa = upa
-        self._get_obj()
-
-
-    def _get_obj(self):
-        logging.info('Loading object info for AmpliconSet `%s`' % self.upa)
-
-        obj = Var.dfu.get_objects({
-            'object_refs': [self.upa]
-        })
-
-        if Var.debug: write_json(obj, 'get_objects_AmpliconSet.json', AmpliconSet=True)
-
-        self.name = obj['data'][0]['info'][1]
-        self.obj = obj['data'][0]['data']
-        self.amp_mat_upa = self.obj['amplicon_matrix_ref']
-
-
-    @staticmethod
-    def _concat_tax(tax: list):
-        return '; '.join(tax)
-
-        
-    def get_taxStr_l(self, id_l: list): # TODO allow missing taxonomies? 
-        '''
-        Given `id_l`, return corresponding `taxStr_l`
-        '''
-        amplicons_d = self.obj['amplicons']
-        taxStr_l = []
-
-        for id in id_l:
-            taxonomy_d = amplicons_d[id]['taxonomy']
-            
-            if 'lineage' not in taxonomy_d: # TODO disallow `'lineage': {}`?
-                raise NoTaxonomyException(msg_missingTaxonomy % id)
-
-            taxStr = self._concat_tax(taxonomy_d['lineage'])   
-            taxStr_l.append(taxStr)
-
-        return taxStr_l
-
-
-    def _get_tax2ids_d(self):
-        '''
-        Taxonomy is a string, ids is a list
-        '''
-        tax2ids_d = {}
-
-        for id, amplicon_d in self.obj['amplicons'].items():
-            tax = self._concat_tax(amplicon_d['taxonomy']['lineage'])
-            if tax in tax2ids_d:
-                tax2ids_d[tax].append(id)
-            else:
-                tax2ids_d[tax] = [id]
-
-        return tax2ids_d
-
-
-    def get_id2functions_d(self, tax2functions_d: dict): 
-        '''
-        AmpliconSet has id-tax mapping
-
-        Taxonomies and functions are both strings
-        `tax2functions_d` is computed from FAPROTAX output
-
-        Goal:
-        [tax2functions]-------[using-tax2ids]-------->[id2functions]
-        '''
-        id2functions_d = {}
-        tax2ids_d = self._get_tax2ids_d()
-
-        for tax, functions in tax2functions_d.items():
-            for id in tax2ids_d[tax]:
-                id2functions_d[id] = functions
-
-        return id2functions_d
-
-
-
-    def update_amplicon_matrix_ref(self, amp_mat_upa_new):
-        self.obj['amplicon_matrix_ref'] = amp_mat_upa_new
-
-
-    def save(self, name=None):
-
-        info = Var.dfu.save_objects({
-            'id': Var.params['workspace_id'],
-            "objects": [{
-                "type": "KBaseExperiments.AmpliconSet",
-                "data": self.obj,
-                "name": name if name != None else self.name,
-                "extra_provenance_input_refs": [self.upa]
-             }]})[0]
-
-        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
-
-        return upa_new
-
-"""
-
-
-####################################################################################################
-####################################################################################################
-class AmpliconMatrix:
-
-    def __init__(self, upa):
-        '''
-        Instance variables created during init:
-        * upa
-        * name
-        * obj
-        '''
-        self.upa = upa
-
-        self._get_obj()
-
-
-    def _get_obj(self):
-        logging.info('Loading object info for AmpliconMatrix `%s`' % self.upa)
-
-        obj = Var.dfu.get_objects({
-            'object_refs': [self.upa]
-        })
-
-        if Var.debug: 
-            pass # TODO annotate run_dir with input name
-
-        self.name = obj['data'][0]['info'][1]
-        self.obj = obj['data'][0]['data']
-
-        #dprint('self.upa', 'self.obj', run=locals(), max_lines=None)
-
-
-    def to_OTU_table(self, tax_l, flpth=None):
-        '''
-        `taxonomy` is index
-        `OTU_Id` is first column
-
-        This interface is used for testing
-        Return df for testing
-        '''
-
-        logging.info(f"Parsing AmpliconMatrix data from object")
-
-        data = np.array(self.obj['data']['values'], dtype=float)
-        row_ids = self.obj['data']['row_ids']
-        col_ids = self.obj['data']['col_ids']
-
-        df = pd.DataFrame(
-            data, 
-            index=tax_l,#self.row_attr_map.get_tax_l(row_ids), 
-            columns=col_ids
-            )
-        df.index.name = "taxonomy"
-        df['OTU_Id'] = row_ids # add OTU_Id for identification purposes (?)
-        df = df[['OTU_Id'] + col_ids] # reorder
-
-        if flpth is not None:
-            df.to_csv(flpth, sep='\t')
-
-        return df
-
-
-    def save(self, name=None):
-        info = Var.dfu.save_objects({
-            'id': Var.params['workspace_id'],
-            "objects": [{
-                "type": "KBaseMatrices.AmpliconMatrix",
-                "data": self.obj,
-                "name": self.name if name is None else name,
-                "extra_provenance_input_refs": [self.upa]
-             }]})[0]
-
-        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
-
-        return upa_new
-
-
-
-
-####################################################################################################
-####################################################################################################
-class AttributeMapping:
-
-    def __init__(self, upa):
-        '''
-        Instance variables created at init time:
-        * upa
-        * name
-        * obj
-        '''
-        self.upa = upa
-        self._get_obj()
-
-
-    def _get_obj(self):
-        logging.info('Loading object info for AttributeMapping `%s`' % self.upa)
-
-        obj = Var.dfu.get_objects({
-            'object_refs': [self.upa]
-        })
-
-        if Var.debug: write_json(obj, 'get_objects_AttributeMapping.json')
-
-        self.name = obj['data'][0]['info'][1]
-        self.obj = obj['data'][0]['data']
-
-
-
-    def get_tax_attribute(self, regex_l):
-        '''
-        Case insensitive
-        regex_l gives priority of regexes
-        '''
-        attribute_l = [d['attribute'] for d in self.obj['attributes']]
-
-        for regex in regex_l:
-            for i, attribute in enumerate(attribute_l):
-                if re.search(regex, attribute.lower()) is not None:
-                    return i, attribute
-        return None, None
-
-
-    def get_tax_l(self, tax_ind, id_l):
-        tax_l = []
-
-        for id in id_l:
-            tax_l.append(
-                self.obj['instances'][id][tax_ind]
-            )
-
-        return tax_l
-
-
-
-    def update_attribute(self, ind: int, id2attr_d: dict):
-        '''
-        Update attribute at index `ind` using mapping `id2attr_d`
-        '''
-        for id, attr in id2attr_d.items():
-            self.obj['instances'][id][ind] = attr
-
-
-    def add_attribute_slot(self, attribute, source) -> int:
-        '''
-        If attribute not already entered, add slot for it
-        Return its index in the attributes/instances
-        '''
-        
-        # check if already exists
-        for ind, attr_d in enumerate(self.obj['attributes']):
-            if attr_d['attribute'] == attribute and attr_d['source'] == source:
-                msg = msg_overwriteAttribute % (attribute, source, self.name)
-                logging.warning(msg)
-                Var.warnings.append(msg)
-                return ind
-
-        # append slot to `attributes`
-        self.obj['attributes'].append({
-            'attribute': attribute,
-            'source': source,
-            })
-
-        # append slots to `instances` 
-        for attr_l in self.obj['instances'].values():
-            attr_l.append('')
-
-        return len(attr_l) - 1
-
-
-    def save(self):
-        
-        info = Var.dfu.save_objects({
-            'id': Var.params['workspace_id'],
-            "objects": [{
-                "type": "KBaseExperiments.AttributeMapping",
-                "data": self.obj,
-                "name": self.name,
-                "extra_provenance_input_refs": [self.upa]
-             }]})[0]
-
-        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
-
-        dprint('upa_new', run=locals())
-
-        return upa_new
-
-
-
 

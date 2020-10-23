@@ -27,7 +27,7 @@ mock_kbr = create_autospec(KBaseReport, instance=True) # create_extended_report
 mock_ws = create_autospec(Workspace, instance=True) # get_object_info3
 mock_run_check = create_autospec(run_check) # avoid lengthy runs
 
-"""
+""" Trying to tease these out from get_mock_dfu
 #####
 #####
 #####

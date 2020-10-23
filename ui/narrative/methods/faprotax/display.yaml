@@ -22,12 +22,20 @@ suggestions:
 #
 # Configure the display and description of parameters
 #
+
 parameters :
     input_upa :
         ui-name : |
             Input object
         short-hint : |
             Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>
+            
+    tax_field:
+        ui-name: |
+            Taxonomy field
+        short-hint: |
+            Taxonomy field
+
     output_amplicon_matrix_name:
         ui-name: |
             Output AmpliconMatrix name

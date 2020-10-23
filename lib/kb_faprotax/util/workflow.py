@@ -16,10 +16,6 @@ from .kbase_obj import AmpliconMatrix, AttributeMapping, GenomeSet, Genome
 
 
 
-
-
-
-
 ####################################################################################################
 def run_check(cmd):
     '''
@@ -37,29 +33,6 @@ def run_check(cmd):
 
 ####################################################################################################
 def parse_tax2groups(groups2records_table_dense_flpth, dlm=',') -> dict:
-    '''
-    In FAPROTAX, a taxonomic path is also known as a 'record', and a
-    function is also known as a 'group'.
-
-    The input is a filepath for grouops2records_dense.tsv, which is one of
-    the outputs from FAPROTAX. Basically, its index is the records, its columns
-    are the groups, and its values are nonnegative floats
-
-    Input: filepath for groups2records_dense.tsv
-    Output: dict map from taxonomy to predicted functions
-    '''
-    
-    """
-    tax2groups_df = pd.read_csv(groups2records_table_dense_flpth, sep='\t', comment='#')
-    tax2groups_df = tax2groups_df.fillna('').drop_duplicates().set_index('record')
-
-    tax2groups_d = tax2groups_df.to_dict(orient='index')
-    tax2groups_d = {record: tax2groups_d[record]['group'] for record in tax2groups_d}
-    if dlm != ',': 
-        tax2groups_d = {record: group.replace(',', dlm) for record, group in tax2groups_d.items()}
-
-    return tax2groups_d
-    """
     tax2groups_df = pd.read_csv(groups2records_table_dense_flpth, sep='\t', comment='#').fillna('')
     return tax2groups_df['record'].tolist(), tax2groups_df['group'].tolist()
 
@@ -120,13 +93,14 @@ def do_AmpliconMatrix_workflow():
     row_attr_map_upa = amp_mat.obj.get('row_attributemapping_ref')
     if row_attr_map_upa is None:
         msg = (
-"Input AmpliconMatrix does not have a row AttributeMapping object to grab taxonomy from and assign traits to. "
+"Input AmpliconMatrix %s does not have a row AttributeMapping object to grab taxonomy from and assign traits to. "
 "To upload a row AttributeMapping with taxonomy, try running attribute mapping import app. "
 "To create a row AttributeMapping and assign it with taxonomy, try running kb_RDP_Classifier app first"
+% amp_mat.name
         )
         raise NoTaxonomyException(msg)
 
-    row_attr_map = AttributeMapping(row_attr_map_upa)
+    row_attr_map = AttributeMapping(row_attr_map_upa, amp_mat)
     amp_mat.row_attr_map = row_attr_map
 
 
@@ -147,7 +121,9 @@ def do_AmpliconMatrix_workflow():
     ) # detect attribute that holds tax
 
     if ind is None:
-        raise NoTaxonomyException('Sorry no taxonomy was found!')
+        raise NoTaxonomyException(
+            'Sorry no taxonomy was found in row AttributeMapping %s!' % row_attr_map.name
+        )
 
     # id_l and tax_l correspond to AmpliconMatrix rows
     id_l = amp_mat.obj['data']['row_ids']
@@ -234,14 +210,13 @@ def do_AmpliconMatrix_workflow():
     tax_order, groups_l = parse_tax2groups(groups2records_table_dense_flpth)
     id2groups = {id: group for id, group in zip(id_l, groups_l)}
 
-    if Var.debug: # check FAPROTAX did not reorder the rows of OTU table
-        assert len(tax_order) == len(tax_l), 'Lengths: %s vs %s' % (len(tax_order), len(tax_l))
-        for i, (tax1, tax2) in enumerate(zip(tax_order, tax_l)):
-            assert tax1 == tax2, 'index %d\n`%s`\n`%s`' % (i, tax1, tax2)
+    # 99% sure FAPROTAX did not reorder the rows of OTU table
+    # from running it and checking source code
+    if Var.debug: 
         assert tax_order == tax_l, '`%s`\n`%s`' % (tax_order, tax_l)
 
     ind = row_attr_map.add_attribute_slot(attribute, source)
-    row_attr_map.update_attribute(ind, id2groups)
+    row_attr_map.map_update_attribute(ind, id2groups)
     row_attr_map_upa_new = row_attr_map.save()
 
     amp_mat.obj['row_attributemapping_ref'] = row_attr_map_upa_new
@@ -296,7 +271,7 @@ def do_AmpliconMatrix_workflow():
     else:
         func_prof_sample_upa = Var.fpu.import_func_profile(dict(
             workspace_id=Var.params['workspace_id'],
-            func_profile_obj_name='%s.FAPROTAX_func_table' % amp_mat.name,
+            func_profile_obj_name='%s.FAPROTAX_collapsed_func_table' % amp_mat.name,
             original_matrix_ref=amp_mat_upa_new, 
             profile_file_path=collapsed_func_table_flpth,
             profile_type='mg',
