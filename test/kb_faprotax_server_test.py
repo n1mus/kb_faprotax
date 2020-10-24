@@ -229,11 +229,11 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 
         attr_map = AttributeMapping('-111/-1/-1')
 
-        ind = attr_map.add_attribute_slot('celestial body', 'unit testing')
+        ind = attr_map.add_attribute_slot_warn('celestial body', 'unit testing')
         attr_map.update_attribute(ind, id2attr_d)
         self.assertTrue(len(Var.warnings) == 0)
         
-        ind = attr_map.add_attribute_slot('celestial body', 'upload')
+        ind = attr_map.add_attribute_slot_warn('celestial body', 'upload')
         attr_map.update_attribute(ind, id2attr_d)
         self.assertTrue(len(Var.warnings) == 1)
 

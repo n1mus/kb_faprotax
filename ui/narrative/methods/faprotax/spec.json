@@ -1,7 +1,8 @@
 {
     "ver": "0.0.1",
     "authors": [
-        "swwang"
+        "swwang",
+        "seanjungbluth"
     ],
     "contact": "",
     "categories": ["active"],
@@ -27,9 +28,9 @@
             "allow_multiple": false,
             "field_type": "textsubdata",
             "textsubdata_options" : {
-                "show_src_obj": true,
+                "show_src_obj": false,
                 "allow_custom": true,
-                "multiselection": true,
+                "multiselection": false,
                 "subdata_selection": {
                     "parameter_id": "input_upa",
                     "path_to_subdata": [
@@ -39,20 +40,21 @@
                     ],
                     "subdata_included": [
                         "attributes/[*]/attribute",
-                        "attributes/[*]/source"
+                        "attributes/[*]/source",
+                        "row_attributemapping_ref"
                     ],
                     "selection_id": "attribute",
                     "selection_description": [
                         "attribute",
                         "source"
                     ],
-                    "description_template": "{{attribute}} (source: {{source}})"
+                    "description_template": "source: {{source}}"
                 }
             }
         },{
             "id": "output_amplicon_matrix_name",
             "optional": true,
-            "advanced": true,
+            "advanced": false,
             "allow_multiple": false,
             "default_values": [ "" ],
             "field_type": "text",

@@ -116,7 +116,7 @@ class AmpliconMatrix:
             "objects": [{
                 "type": "KBaseMatrices.AmpliconMatrix",
                 "data": self.obj,
-                "name": self.name if name is None else name,
+                "name": name if name else self.name, # null case name="" or name=None
                 "extra_provenance_input_refs": [self.upa]
              }]})[0]
 
@@ -156,18 +156,23 @@ class AttributeMapping:
 
 
 
-    def get_tax_attribute(self, regex_l):
+    def get_tax_ind_attribute(self, tax_field):
         '''
-        Case insensitive
-        regex_l gives priority of regexes
+        Get index and name of taxonomy attribute
+        Whether it's from the user-entered or default regexes
         '''
-        attribute_l = [d['attribute'] for d in self.obj['attributes']]
+        if len(tax_field) == 1:
+            tax_field = tax_field[0]
 
-        for regex in regex_l:
-            for i, attribute in enumerate(attribute_l):
-                if re.search(regex, attribute.lower()) is not None:
-                    return i, attribute
-        return None, None
+
+        else:
+            attribute_l = [d['attribute'] for d in self.obj['attributes']]
+
+            for regex in regex_l:
+                for i, attribute in enumerate(attribute_l):
+                    if re.search(regex, attribute.lower()) is not None:
+                        return i, attribute
+            return None, None
 
 
     def get_tax_l(self, tax_ind, id_l):
@@ -194,7 +199,7 @@ class AttributeMapping:
             self.obj['instances'][id][ind] = attr
 
 
-    def add_attribute_slot(self, attribute, source) -> int:
+    def add_attribute_slot_warn(self, attribute, source) -> int:
         '''
         If attribute not already entered, add slot for it
         Return its index in the attributes/instances

@@ -98,7 +98,7 @@ def do_AmpliconMatrix_workflow():
 "To create a row AttributeMapping and assign it with taxonomy, try running kb_RDP_Classifier app first"
 % amp_mat.name
         )
-        raise NoTaxonomyException(msg)
+        raise NoWsReferenceException(msg)
 
     row_attr_map = AttributeMapping(row_attr_map_upa, amp_mat)
     amp_mat.row_attr_map = row_attr_map
@@ -111,14 +111,11 @@ def do_AmpliconMatrix_workflow():
     ####
     #####
 
+    assert type(params['tax_field']) is str
 
     ind, tax_attribute = row_attr_map.get_tax_attribute(
-        regex_l = [
-            'rdp classifier taxonomy',
-            'parsed_user_taxonomy',
-            'taxonomy',
-        ]
-    ) # detect attribute that holds tax
+        params.get['tax_field']
+    ) # either find user-entered tax, or detect an attribute that holds tax
 
     if ind is None:
         raise NoTaxonomyException(
@@ -215,7 +212,7 @@ def do_AmpliconMatrix_workflow():
     if Var.debug: 
         assert tax_order == tax_l, '`%s`\n`%s`' % (tax_order, tax_l)
 
-    ind = row_attr_map.add_attribute_slot(attribute, source)
+    ind = row_attr_map.add_attribute_slot_warn(attribute, source)
     row_attr_map.map_update_attribute(ind, id2groups)
     row_attr_map_upa_new = row_attr_map.save()
 

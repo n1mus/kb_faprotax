@@ -28,26 +28,33 @@ parameters :
         ui-name : |
             Input object
         short-hint : |
-            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code>
+            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code><br><code>AmpliconMatrix</code> objects must reference a row <AttributeMapping> that has taxonomy
             
     tax_field:
         ui-name: |
             Taxonomy field
         short-hint: |
-            Taxonomy field
+            Select the field from input AmpliconMatrix's row AttributeMapping corresponding to the taxonomy for FAPROTAX to run on.<br>Default behavior (leaving blank) is to look for any field with substring 'taxonomy', with some prioritization
 
     output_amplicon_matrix_name:
         ui-name: |
             Output AmpliconMatrix name
         short-hint: |
-            If input AmpliconMatrix is updated by writing traits to existing associated row AttributeMapping, the output AmpliconMatrix will save over the input by default. Enter a new name to avoid that
+            New name for input AmpliconMatrix when it is updated to reference row AttributeMapping updated with FAPROTAX functions. Default behavior (leaving blank) is to save over input AmpliconMatrix
 
 description : |
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar efficitur felis, quis tincidunt sem congue at. Vivamus ornare feugiat faucibus. Fusce tincidunt mattis nunc, nec varius purus convallis quis. Nulla facilisi. In at magna dolor. Suspendisse sit amet felis at arcu auctor dapibus vitae pharetra dui. Nam semper mi quis tortor fermentum mollis. Donec a arcu pharetra, rutrum dolor vitae, rutrum mauris. Donec ornare fringilla sagittis. Nam laoreet est in elementum malesuada. Vestibulum id mi eget urna hendrerit feugiat. Donec et ultrices nulla. Phasellus diam eros, dapibus at tempus nec, semper vel ante.</p>
 
-    <p>Curabitur auctor, metus at tristique euismod, odio elit tincidunt neque, a facilisis sem massa convallis dolor. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc ut hendrerit tellus. Nunc lacinia laoreet finibus. Etiam vitae sagittis enim. Fusce consectetur porta est eu pretium. In hac habitasse platea dictumst. Integer pellentesque sit amet sapien id venenatis. Nullam ac risus at orci eleifend aliquet. Vestibulum elit purus, euismod a nibh quis, pellentesque semper leo. Curabitur ullamcorper felis hendrerit nunc egestas, sit amet pharetra sapien porttitor. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Maecenas hendrerit ipsum a ligula aliquet vestibulum. Duis a ante urna. Aenean ante neque, rhoncus id luctus ut, accumsan vel nunc.</p>
+    <p>
+    This app is implemented mostly for the amplicon workflow. However, it does also take <code>GenomeSet</code> objects. In that case, just ignore the rest of the params.
+    </p>
 
-    <p>Pellentesque accumsan aliquet magna, id consectetur tellus condimentum eu. Suspendisse elit dui, ornare ac leo eget, tincidunt feugiat orci. Maecenas auctor gravida lacinia. Mauris interdum nisi vel gravida varius. Nullam tempus, purus eget posuere aliquet, odio elit semper massa, quis facilisis massa odio vitae lacus. Fusce varius enim a mi vehicula tempus. Maecenas faucibus tellus ipsum, at venenatis ipsum auctor et. Suspendisse sem mi, dignissim id porta efficitur, auctor eget magna. Vivamus varius purus nulla, porttitor euismod lorem cursus quis. Nulla sit amet eros nec sem ultrices pulvinar.</p>
+    <p>
+    Note: currently, if input <code>AmpliconMatrix</code>'s row <code>AttributeMapping</code> has duplicate <code>attribute</code>/<code>source</code> pairs in its <code>attributes</code> field,
+    they will generally not be able to be distinguished from one another and the first one may be computed with and any others may likely be ignored.
+    Duplicate <code>attribute</code>/<code>source</code> pairs are currently avoided in amplicon workflow apps.
+    </p>
+
+    <a href="http://www.loucalab.com/archive/FAPROTAX/lib/php/index.php?section=Instructions">FAPROTAX usage</a>
 
 publications:
     -
@@ -56,7 +63,3 @@ publications:
              Louca S, Parfrey LW, Doebeli M. Decoupling function and taxonomy in the global ocean microbiome. Science. 2016;353: 1272-1277. doi:10.1126/science.aaf4507
         link: https://doi.org/10.1126/science.aaf4507
 
-    -
-        display-text : |
-            FAPROTAX source:
-        link: https://pages.uoregon.edu/slouca/LoucaLab/archive/FAPROTAX/
