@@ -1,12 +1,8 @@
-class NoTaxonomyException(Exception):
-    pass
+class NoTaxonomyException(Exception): pass
 
-class NoWsReferenceException(Exception):
-    pass
+class NoWsReferenceException(Exception): pass
 
-class NonZeroReturnException(Exception):
-    pass
-
+class NonZeroReturnException(Exception): pass
 
 msg_overwriteAttribute = (
 'Overwriting attribute `%s` with source `%s` in row AttributeMapping with name `%s`')

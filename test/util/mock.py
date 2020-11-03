@@ -7,6 +7,7 @@ import json
 from installed_clients.DataFileUtilClient import DataFileUtil
 from installed_clients.KBaseReportClient import KBaseReport
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.FunctionalProfileUtilClient import FunctionalProfileUtil
 
 from kb_faprotax.util.dprint import dprint
 from kb_faprotax.util.varstash import Var
@@ -57,6 +58,21 @@ def mock_dfu_get_objects(params):
     return obj
 """
 
+def get_mock_fpu(dataset=None):
+    mock_fpu = create_autospec(FunctionalProfileUtil, instance=True)
+
+    def mock_import_func_profile(params):
+        logging.info('Mocking `fpu.import_func_profile` with `params=%s`' % str(params))
+
+        return dict(
+            func_profile_ref='func/profile/ref'
+        )
+
+    mock_fpu.import_func_profile.side_effect = mock_import_func_profile
+
+    return mock_fpu
+
+
 #####
 #####
 #####
@@ -88,10 +104,19 @@ def get_mock_dfu(dataset):
     def mock_dfu_get_objects(params):
         logging.info('Mocking `dfu.get_objects` with `params=%s`' % str(params))
 
-        upa = params['object_refs'][0]
+        upa = params['object_refs'][0].split(';')[-1] # get last UPA in ref chain
         flnm = {
-                # TODO
-            }[upa]
+            enigma50by30: 'AmpliconMatrix.json',
+            enigma50by30_rowAttrMap : 'row_AttributeMapping.json',
+            enigma50by30_RDPClsf: 'AmpliconMatrix.json',
+            enigma50by30_RDPClsf_rowAttrMap: 'AttributeMapping.json',
+            enigma50by30_noSampleSet: 'AmpliconMatrix.json',
+            enigma50by30_noAttrMaps_noSampleSet : 'AmpliconMatrix.json',
+            enigma17770by511: 'AmpliconMatrix.json',
+            enigma17770by511_rowAttrMap: 'row_AttributeMapping.json',
+            dummy10by8: 'AmpliconMatrix.json',
+            dummy10by8_rowAttrMap: 'AttributeMapping.json',
+        }[upa]
         flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
 
         with open(flpth) as f:

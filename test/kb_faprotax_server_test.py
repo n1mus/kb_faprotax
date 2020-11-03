@@ -19,6 +19,7 @@ from kb_faprotax.kb_faprotaxServer import MethodContext
 from kb_faprotax.authclient import KBaseAuth as _KBaseAuth
 from installed_clients.WorkspaceClient import Workspace
 
+from kb_faprotax.util.workflow import run_check
 from kb_faprotax.util.error import * # exception library
 from kb_faprotax.util.dprint import dprint, where_am_i
 from kb_faprotax.util.varstash import Var # dict-like dot-access app globals
@@ -79,7 +80,6 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
     # doesn't need mocking - fast
     def test_run_check(self):
         '''Test function that runs FAPROTAX'''
-        from kb_faprotax.util.workflow import run_check
 
         with self.assertRaises(NonZeroReturnException) as cm:
             run_check('set -o pipefail && ;s |& tee tmp')
@@ -166,7 +166,7 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 
     @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('enigma50by30_noAttrMaps_noSampleSet')})
     def test_AmpliconMatrix_methods(self):
-        amp_mat = AmpliconMatrix(_enigma50by30_noAttrMaps_noSampleSet_AmpMat, amp_set)
+        amp_mat = AmpliconMatrix(enigma50by30_noAttrMaps_noSampleSet, amp_set)
 
         # superficially test `to_OTU_table`
         df1 = pd.read_csv(
@@ -184,50 +184,12 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                                                                  # e.g., 0.1 + 0.1 + 0.1 => 0.30000000000000004
 
 
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu(None), 'warnings': []})
+    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('dummy10by8'), 'warnings': []})
     def test_AttributeMapping_methods(self):
-        # set `get_objects` to return something simpler and independent
-        obj = {
-            "data": [
-                {
-                    "data": {
-                        "attributes": [
-                            {
-                                "attribute": "celestial body",
-                                "source": "upload",
-                            },
-                            {
-                                "attribute": "biome",
-                                "source": "upload",
-                            },
-                        ],
-                        "instances": {
-                            "fffffffffffffffffffffffffffffffd": [
-                                "Ganymede",
-                                "tundra",
-                            ],
-                            "fffffffffffffffffffffffffffffffe": [
-                                "Mars",
-                                "rainforest",
-                            ],
-                            "ffffffffffffffffffffffffffffffff": [
-                                "Saturn",
-                                "chaparral",
-                            ],
-                        }
-                    },
-                    "info": [
-                        -1,
-                        "AttributeMapping_dummy_name",
-                    ]
-                }
-            ]
-        }
-        mock_dfu.get_objects.side_effect = lambda params: obj
-
         id2attr_d = {'f' * 31 + 'd': 'black hole', 'f' * 31 + 'e': 'quasar', 'f' * 32: 'dark matter'}
 
-        attr_map = AttributeMapping('-111/-1/-1')
+        amp_mat = AmpliconMatrix(dummy10by8)
+        attr_map = AttributeMapping(dummy10by8_rowAttrMap, amp_mat)
 
         ind = attr_map.add_attribute_slot_warn('celestial body', 'unit testing')
         attr_map.update_attribute(ind, id2attr_d)
@@ -269,21 +231,24 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 ########################## AmpliconMatrix input #######################################################
 ####################################################################################################
 
-    @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_RDPClsf'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
-    def test_AmpliconMatrix(self):
+    def test_AmpliconMatrix_tax_field(self):
         ret = self.serviceImpl.run_FAPROTAX(
             self.ctx, {
                 **self.params_ws,
                 'input_upa': enigma50by30,
+                'tax_field': 'RDP Classifier taxonomy, conf=0.777, gene=silva_138_ssu, minWords=default', # TODO don't expose minWords in UI/attribute ?
                 'output_amplicon_matrix_name': 'a_name',
             })
 
+        self.assertTrue(len(Var.params_report.objects_created) == 4)
+
 
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_noAttrMaps_noSampleSet'))
-    @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconMatrix_noRowAttributeMapping(self):
-        with self.assertRaises(NoTaxonomyException) as cm:
+        with self.assertRaises(NoWsReferenceException) as cm:
             ret = self.serviceImpl.run_FAPROTAX(
                 self.ctx, {
                     **self.params_ws,
@@ -291,6 +256,7 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                 })
             
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_noSampleSet'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconMatrix_noSampleSet(self):
         ret = self.serviceImpl.run_FAPROTAX(
@@ -299,11 +265,13 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                 'input_upa': enigma50by30_noSampleSet,
             })
 
-    """
-    #@patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_noAttrMaps_noSampleSet'))
-    @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('enigma50by30_noAttrMaps_noSampleSet'))
+        self.assertTrue(len(Var.params_report.objects_created) == 3)
+
+    @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma17770by511'))
+    @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('enigma17770by511'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
-    def test_AmpliconMatrix_input_against_reference(self):
+    def test_AmpliconMatrix_against_reference(self):
         '''
         Check results against answers if full pipeline is run (i.e., no mocks)
         
@@ -314,17 +282,15 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         ret = self.serviceImpl.run_FAPROTAX(
             self.ctx, {
                 **self.params_ws,
-                'input_upa': _enigma50by30_noAttrMaps_noSampleSet,
+                'input_upa': enigma17770by511,
                 }
             )
 
-        from kb_faprotax.util.workflow import run_check
+        self.assertTrue(len(Var.params_report.objects_created) == 4)
 
         # only check results against reference
         # if full pipeline has been run
-        if (isinstance(Var.dfu, unittest.mock.NonCallableMagicMock) or
-            isinstance(Var.kbr, unittest.mock.NonCallableMagicMock) or
-            hasattr(run_check, 'side_effect')):
+        if do_patch:
             return
 
         logging.info('Comparing traits in AttributeMapping to answers')
@@ -348,7 +314,8 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         })['data'][0]['data']['objects_created'][0]['ref']
 
         # load AttributeMapping
-        row_attrmap = AttributeMapping(attrmap_upa_new)
+        dummy_amp_mat = MagicMock(upa=enigma17770by511)
+        row_attrmap = AttributeMapping(attrmap_upa_new, dummy_amp_mat)
         instances_d = row_attrmap.obj['instances']
         attribute_d_l = row_attrmap.obj['attributes']
 
@@ -399,7 +366,6 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             fp.write('\n'.join(html_l))
     
         
-    """
 
 
 
@@ -487,19 +453,21 @@ unit_tests = [
     'test_parse_faprotax_functions', 'test_run_check',
     'test_Genome_methods', 'test_GenomeSet_methods',
 ]
-AmpliconMatrix_tests = [
-    'test_AmpliconMatrix', 'test_AmpliconMatrix_noRowAttributeMapping', 'test_AmpiconMatrix_noSampleSet'
+AmpliconMatrix_integration_tests = [
+    'test_AmpliconMatrix_tax_field', 
+    'test_AmpliconMatrix_noRowAttributeMapping', 'test_AmpiconMatrix_noSampleSet',
+    'test_AmpliconMatrix_against_reference'
 ]
-GenomeSet_tests = [
+GenomeSet_integration_tests = [
     'test_GenomeSet_input',
     'test_dup_GenomeSet',
     'test_dummy_OTU_table_abundance', # TODO mock this so it's a unit test
 ]
-run_tests = unit_tests + AmpliconMatrix_tests#['test_AmpliconMatrix']
+run_tests = ['test_AmpliconMatrix_against_reference']
 
 for key, value in kb_faprotaxTest.__dict__.copy().items():
     if key.startswith('test') and callable(value):
-        if key not in run_tests:
+        if key not in GenomeSet_integration_tests:
             delattr(kb_faprotaxTest, key)
             pass
 

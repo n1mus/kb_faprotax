@@ -130,6 +130,9 @@ class AmpliconMatrix:
 ####################################################################################################
 ####################################################################################################
 class AttributeMapping:
+    '''
+    Really a *row* AttributeMapping
+    '''
 
     def __init__(self, upa, amp_mat):
         '''
@@ -148,7 +151,7 @@ class AttributeMapping:
         logging.info('Loading object info for AttributeMapping `%s`' % self.upa)
 
         obj = Var.dfu.get_objects({
-            'object_refs': ['%s;%s' % (amp_mat.upa, self.upa)]
+            'object_refs': ['%s;%s' % (self.amp_mat.upa, self.upa)]
         })
 
         self.name = obj['data'][0]['info'][1]
@@ -159,20 +162,29 @@ class AttributeMapping:
     def get_tax_ind_attribute(self, tax_field):
         '''
         Get index and name of taxonomy attribute
-        Whether it's from the user-entered or default regexes
+        Whether it's from the user-entered field or default regexes
         '''
-        if len(tax_field) == 1:
-            tax_field = tax_field[0]
+        attribute_l = [d['attribute'] for d in self.obj['attributes']]
 
+        dprint(
+            'tax_field',
+            'attribute_l',
+            run=locals())
+
+        if tax_field is not None:
+            for i, attribute in enumerate(attribute_l):
+                if attribute == tax_field:
+                    return i, attribute
+
+            raise Exception() # should be in there
 
         else:
-            attribute_l = [d['attribute'] for d in self.obj['attributes']]
-
-            for regex in regex_l:
+            for regex in Var.regex_l:
                 for i, attribute in enumerate(attribute_l):
                     if re.search(regex, attribute.lower()) is not None:
                         return i, attribute
-            return None, None
+
+        return None, None
 
 
     def get_tax_l(self, tax_ind, id_l):
@@ -184,7 +196,6 @@ class AttributeMapping:
             )
 
         return tax_l
-
 
 
     def map_update_attribute(self, ind: int, id2attr: dict, map_ids_first=True):

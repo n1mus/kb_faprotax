@@ -45,13 +45,13 @@ parameters :
 description : |
 
     <p>
-    This app is implemented mostly for the amplicon workflow. However, it does also take <code>GenomeSet</code> objects. In that case, just ignore the rest of the params.
+    This app is implemented primarily for the amplicon workflow. However, it does also take <code>GenomeSet</code> objects. In that case, just ignore the rest of the params.
     </p>
 
     <p>
     Note: currently, if input <code>AmpliconMatrix</code>'s row <code>AttributeMapping</code> has duplicate <code>attribute</code>/<code>source</code> pairs in its <code>attributes</code> field,
     they will generally not be able to be distinguished from one another and the first one may be computed with and any others may likely be ignored.
-    Duplicate <code>attribute</code>/<code>source</code> pairs are currently avoided in amplicon workflow apps.
+    Generating duplicate <code>attribute</code>/<code>source</code> pairs is currently avoided in amplicon workflow apps.
     </p>
 
     <a href="http://www.loucalab.com/archive/FAPROTAX/lib/php/index.php?section=Instructions">FAPROTAX usage</a>

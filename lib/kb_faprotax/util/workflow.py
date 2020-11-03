@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import json
 import shutil
+from dotmap import DotMap
 
 from .dprint import dprint
 from .varstash import Var
@@ -103,7 +104,10 @@ def do_AmpliconMatrix_workflow():
     row_attr_map = AttributeMapping(row_attr_map_upa, amp_mat)
     amp_mat.row_attr_map = row_attr_map
 
-
+    # testing
+    if Var.debug is True:
+        Var.amp_mat = amp_mat
+        Var.row_attr_map = row_attr_map
 
     #
     ##
@@ -111,15 +115,20 @@ def do_AmpliconMatrix_workflow():
     ####
     #####
 
-    assert type(params['tax_field']) is str
-
-    ind, tax_attribute = row_attr_map.get_tax_attribute(
-        params.get['tax_field']
+    ind, tax_attribute = row_attr_map.get_tax_ind_attribute(
+        Var.params.getd('tax_field')
     ) # either find user-entered tax, or detect an attribute that holds tax
 
     if ind is None:
+        tax_field = params.getd('tax_field')
         raise NoTaxonomyException(
-            'Sorry no taxonomy was found in row AttributeMapping %s!' % row_attr_map.name
+            "Sorry no taxonomy was found in row AttributeMapping %s "    # TODO test this case
+            "%s"
+            "using case-insensitive search string 'taxonomy'" 
+            % (
+                ("either using row AttributeMapping attribute of %s or " % tax_field) if tax_field is not None else '',
+                row_attr_map.name
+            )
         )
 
     # id_l and tax_l correspond to AmpliconMatrix rows
@@ -217,7 +226,7 @@ def do_AmpliconMatrix_workflow():
     row_attr_map_upa_new = row_attr_map.save()
 
     amp_mat.obj['row_attributemapping_ref'] = row_attr_map_upa_new
-    amp_mat_upa_new = amp_mat.save(name=Var.params.get('output_amplicon_matrix_name'))
+    amp_mat_upa_new = amp_mat.save(name=Var.params.getd('output_amplicon_matrix_name'))
 
     Var.objects_created = [
         {'ref': row_attr_map_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
@@ -249,7 +258,7 @@ def do_AmpliconMatrix_workflow():
         profile_category='organism',
         data_epistemology='predicted',
         epistemology_method='FAPROTAX',
-        description='Amplicon vs FAPROTAX functions. In binary for association. Double inference through taxonomic assignment and FAPROTAX',
+        description='Amplicon vs FAPROTAX functions. In binary for association.',
     ))['func_profile_ref']
 
     Var.objects_created.append(
@@ -307,6 +316,7 @@ def do_AmpliconMatrix_workflow():
         'workspace_id': Var.params['workspace_id'],
         }
 
+    Var.params_report = DotMap(params_report) # testing
 
     report_output = Var.kbr.create_extended_report(params_report)
 
@@ -416,7 +426,7 @@ def do_GenomeSet_workflow():
     #####
 
 
-    tax2groups = parse_tax2groups(groups2records_table_dense_flpth, dlm=', ') # parse FAPROTAX results
+    tax2groups = parse_faprotax_functions(groups2records_table_dense_flpth, dlm=', ') # parse FAPROTAX results
 
     gs.df['functions'] = gs.df.apply(lambda row: tax2groups.get(row['taxonomy'], np.nan), axis=1) # stitch FAPROTAX results onto GenomeSet df
 

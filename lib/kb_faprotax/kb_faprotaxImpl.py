@@ -19,6 +19,7 @@ from .util.kbase_obj import AmpliconMatrix, AttributeMapping
 from .util.dprint import dprint
 from .util.varstash import Var, reset_Var # `Var` holds globals, `reset` clears everything but config stuff
 from .util.workflow import do_AmpliconMatrix_workflow, do_GenomeSet_workflow
+from .util.params import Params
 
 
 #END_HEADER
@@ -79,6 +80,7 @@ class kb_faprotax:
         # return variables are: output
         #BEGIN run_FAPROTAX
     
+        dprint('params', run=locals())
 
         #
         ##
@@ -94,7 +96,7 @@ class kb_faprotax:
             'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
             'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
             'fpu': FunctionalProfileUtil(self.callback_url, service_ver='dev'), # TODO overhead?
-            'params': params,
+            'params': Params(params),
             'run_dir': os.path.join(self.shared_folder, 'kbfptx_' + str(uuid.uuid4())),
             'warnings': [],
         })
