@@ -13,6 +13,7 @@ from installed_clients.KBaseReportClient import KBaseReport
 from installed_clients.DataFileUtilClient import DataFileUtil
 from installed_clients.WorkspaceClient import Workspace
 from installed_clients.FunctionalProfileUtilClient import FunctionalProfileUtil
+from installed_clients.GenericsAPIClient import GenericsAPI
 
 
 from .util.kbase_obj import AmpliconMatrix, AttributeMapping
@@ -95,6 +96,7 @@ class kb_faprotax:
             'ws': Workspace(self.workspace_url),
             'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
             'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
+            'gapi': GenericsAPI(self.callback_url, service_ver='dev'),
             'fpu': FunctionalProfileUtil(self.callback_url, service_ver='dev'), # TODO overhead?
             'params': Params(params),
             'run_dir': os.path.join(self.shared_folder, 'kbfptx_' + str(uuid.uuid4())),

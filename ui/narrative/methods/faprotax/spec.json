@@ -23,7 +23,7 @@
             }
         },{
             "id": "tax_field",
-            "optional": true,
+            "optional": false,
             "advanced": false,
             "allow_multiple": false,
             "field_type": "textsubdata",

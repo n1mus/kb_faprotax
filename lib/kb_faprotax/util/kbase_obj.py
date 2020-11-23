@@ -9,6 +9,7 @@ import json
 from .dprint import dprint
 from .varstash import Var
 from .error import *
+from .validate import Validate as vd
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
@@ -45,7 +46,9 @@ class AmpliconMatrix:
         self.obj = obj['data'][0]['data']
 
         # comment run_dir with AmpliconMatrix name
-        dprint('touch %s' % os.path.join(Var.run_dir, '#' + self.name), run='cli')
+        if 'run_dir' in Var and os.path.exists(Var.run_dir):
+            dprint('touch %s' % os.path.join(Var.run_dir, '#' + self.name), run='cli')
+        
 
 
     def to_OTU_table(self, tax_l, flpth=None):
@@ -76,6 +79,49 @@ class AmpliconMatrix:
             df.to_csv(flpth, sep='\t')
 
         return df
+
+
+    def validate_amplicon_abundance_data(self):
+        '''
+        Can't be all missing
+        Should be count data, missing allowed
+
+        Data already restricted to int, float, None
+        Because of KBase float types, which this is composed of,
+        don't have to worry about complex, inf, etc.
+        '''
+        a = np.array(self.obj['data']['values'])
+
+        # Can't be all missing
+        if vd.get_num_missing(a) == a.size:
+            raise ValidationException(
+                'Input AmpliconMatrix cannot be all missing values'
+            )
+
+        a = vd.as_numeric(a, dtype=float) # casting as int will truncate floats into ints
+
+        base_msg = (
+            'Input AmpliconMatrix must have count data (missing values allowed). '
+        )
+
+        # Integer
+        if not vd.is_int_like(a):
+            raise ValidationException(
+                base_msg + 'Non-integer detected'
+            )
+
+        # Gte 0
+        '''
+        import warnings
+        warnings.filterwarnings(action='error', message='.+less')
+        dprint('a', run={**globals(),**locals()})
+        dprint('np.round(a)', run={**globals(),**locals()})
+        dprint('np.round(a)<0', run={**globals(),**locals()})
+        '''
+        if np.any(np.round(a) < 0): # allow for small negative deltas
+            raise ValidationException(
+                base_msg + 'Negative value detected'
+            )
 
     def _map_id2attr_ids(self, id2attr, axis='row'):
         '''
@@ -111,16 +157,13 @@ class AmpliconMatrix:
         return id2attr
 
     def save(self, name=None):
-        info = Var.dfu.save_objects({
-            'id': Var.params['workspace_id'],
-            "objects": [{
-                "type": "KBaseMatrices.AmpliconMatrix",
-                "data": self.obj,
-                "name": name if name else self.name, # null case name="" or name=None
-                "extra_provenance_input_refs": [self.upa]
-             }]})[0]
 
-        upa_new = "%s/%s/%s" % (info[6], info[0], info[4])
+        upa_new = Var.gapi.save_object({
+            'obj_type': 'KBaseMatrices.AmpliconMatrix', # TODO version
+            'obj_name': name if name is not None else self.name,
+            'data': self.obj,
+            'workspace_id': Var.params['workspace_id'],
+        })['obj_ref']
 
         return upa_new
 
@@ -157,37 +200,32 @@ class AttributeMapping:
         self.name = obj['data'][0]['info'][1]
         self.obj = obj['data'][0]['data']
 
+    @property
+    def attributes_length(self):
+        return len(self.obj['attributes'])
 
 
-    def get_tax_ind_attribute(self, tax_field):
+
+    @property
+    def instances_length(self):
+        return len(next(iter(self.obj['instances'].values()))[0])
+
+
+    def get_attr_ind(self, tax_field):
         '''
-        Get index and name of taxonomy attribute
-        Whether it's from the user-entered field or default regexes
+        Get index and name of user-entered (taxonomy) attribute
+        Does not care about source
         '''
         attribute_l = [d['attribute'] for d in self.obj['attributes']]
 
-        dprint(
-            'tax_field',
-            'attribute_l',
-            run=locals())
+        for i, attribute in enumerate(attribute_l):
+            if attribute == tax_field:
+                return i
 
-        if tax_field is not None:
-            for i, attribute in enumerate(attribute_l):
-                if attribute == tax_field:
-                    return i, attribute
-
-            raise Exception() # should be in there
-
-        else:
-            for regex in Var.regex_l:
-                for i, attribute in enumerate(attribute_l):
-                    if re.search(regex, attribute.lower()) is not None:
-                        return i, attribute
-
-        return None, None
+        return None
 
 
-    def get_tax_l(self, tax_ind, id_l):
+    def get_ordered_tax_l(self, tax_ind, id_l):
         tax_l = []
 
         for id in id_l:
@@ -198,13 +236,12 @@ class AttributeMapping:
         return tax_l
 
 
-    def map_update_attribute(self, ind: int, id2attr: dict, map_ids_first=True):
+    def map_update_attribute(self, ind: int, id2attr: dict):
         '''
         First map ids of `id2attr` to AttributeMapping ids using amp_mat's row_mapping
         Update attribute at index `ind` using mapping `id2attr`
         '''
-        if map_ids_first is True:
-            id2attr = self.amp_mat._map_id2attr_ids(id2attr, axis='row')
+        id2attr = self.amp_mat._map_id2attr_ids(id2attr, axis='row')
 
         for id, attr in id2attr.items():
             self.obj['instances'][id][ind] = attr
@@ -255,7 +292,19 @@ class AttributeMapping:
         return upa_new
 
 
+    def _check_attr_consistent(self, ind, attribute, source, id2attr):
+        '''
+        For testing purposes
+        '''
 
+        assert self.obj['attributes'][ind]['attribute'] == attribute
+        assert self.obj['attributes'][ind]['source'] == source
+        
+    
+        for id, attr in id2attr.items():
+            assert self.obj['instances'][id][ind] == attr
+
+        return True
 
 
 

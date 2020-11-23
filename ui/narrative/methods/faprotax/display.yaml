@@ -34,7 +34,7 @@ parameters :
         ui-name: |
             Taxonomy field
         short-hint: |
-            Select the field from input AmpliconMatrix's row AttributeMapping corresponding to the taxonomy for FAPROTAX to run on.<br>Default behavior (leaving blank) is to look for any field with substring 'taxonomy', with some prioritization
+            Select the field from input AmpliconMatrix's row AttributeMapping corresponding to the taxonomy for FAPROTAX to run on
 
     output_amplicon_matrix_name:
         ui-name: |
@@ -44,17 +44,37 @@ parameters :
 
 description : |
 
+    <!--------------------------------------------------------------------------------------------->
+    <h2>
+    App Behavior
+    </h2>
+
     <p>
-    This app is implemented primarily for the amplicon workflow. However, it does also take <code>GenomeSet</code> objects. In that case, just ignore the rest of the params.
+    This app is implemented primarily for the amplicon workflow. However, 
+    it does also take <code>GenomeSet</code> objects. 
+    In that case, just ignore the rest of the params.
     </p>
 
     <p>
-    Note: currently, if input <code>AmpliconMatrix</code>'s row <code>AttributeMapping</code> has duplicate <code>attribute</code>/<code>source</code> pairs in its <code>attributes</code> field,
+    The app, like the application it wraps, expects abundance tables, with missing values allowed.
+    </p>
+
+    <p>
+    Note: currently, if input <code>AmpliconMatrix</code>'s row <code>AttributeMapping</code> 
+    has duplicate <code>attribute</code>/<code>source</code> pairs in its <code>attributes</code> field,
     they will generally not be able to be distinguished from one another and the first one may be computed with and any others may likely be ignored.
     Generating duplicate <code>attribute</code>/<code>source</code> pairs is currently avoided in amplicon workflow apps.
     </p>
 
+
+    <!--------------------------------------------------------------------------------------------->
+    <h2>
+    Resources
+    </h2>
+
     <a href="http://www.loucalab.com/archive/FAPROTAX/lib/php/index.php?section=Instructions">FAPROTAX usage</a>
+
+    <br><br>
 
 publications:
     -

@@ -13,7 +13,6 @@ class Params:
 
 
     DEFAULTS = {
-            'tax_field': None,
             'output_amplicon_matrix_name': None,
     }
 
@@ -29,8 +28,6 @@ class Params:
 
         if params.get('output_amplicon_matrix_name') == '':
             params['output_amplicon_matrix_name'] = None # treat empty string as null case since ui only returns strings for string type
-        if params.get('tax_field') == '':
-            params['tax_field'] = None
         if type(params.get('tax_field')) is list:
             params['tax_field'] = params['tax_field'][0]
        

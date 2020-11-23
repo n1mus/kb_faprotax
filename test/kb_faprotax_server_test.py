@@ -28,14 +28,13 @@ from util.mock import * # mock business
 from util.upa import * # upa library
 
 
-# TODO test large files
 
 ######################################
 ######################################
 ######### TOGGLE PATCH ###############
 ######################################
 ###################################### 
-do_patch = False 
+do_patch = False
 
 if do_patch:
     patch_ = patch
@@ -57,6 +56,8 @@ class kb_faprotaxTest(unittest.TestCase):
 ########################## unit tests ##############################################################
 ####################################################################################################
 
+    ####################
+    ####################
     # doesn't need mocking - fast
     def test_parse_faprotax_functions(self):
         '''Test function used to parse FAPROTAX's predicted functions from its output'''
@@ -77,6 +78,8 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         self.assertTrue(r2g_d[taxonomy] == functions)
 
 
+    ####################
+    ####################
     # doesn't need mocking - fast
     def test_run_check(self):
         '''Test function that runs FAPROTAX'''
@@ -97,11 +100,15 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 
 
  
+    ####################
+    ####################
     # TODO superficially test ctor
     def test_GenomeSet_methods(self):
         pass
        
 
+    ####################
+    ####################
     def test_Genome_methods(self):
         '''
         Genome methods are quite simple, 
@@ -110,6 +117,8 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         pass
 
 
+    ####################
+    ####################
     def test_dummy_OTU_table_abundance(self):
         '''
         Test different dummy abundances in FAPROTAX input OTU table
@@ -163,15 +172,33 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         for combo in combinations(r2g_d_l, 2):
             self.assertTrue(combo[0] == combo[1])
  
+    # TODO bug with patch.dict interfering with each other
 
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('enigma50by30_noAttrMaps_noSampleSet')})
+    ####################
+    ####################
     def test_AmpliconMatrix_methods(self):
-        amp_mat = AmpliconMatrix(enigma50by30_noAttrMaps_noSampleSet, amp_set)
+        '''
+        dprint('Var.tmp # globals', run=globals())
+        from kb_faprotax.util.kbase_obj import Var; dprint('Var.tmp # locals', run=locals())
+        '''
+
+        # use as cm since patch.dict decs interfering with e/o for some reason
+        with patch.dict('kb_faprotax.util.kbase_obj.Var', values={
+                        'tmp': 'test_AmpMat_methods', 'dfu': get_mock_dfu('enigma50by30')}):
+            amp_mat = AmpliconMatrix(enigma50by30)
+            row_attr_map = AttributeMapping(enigma50by30_rowAttrMap, amp_mat)
+
+        # id_l and tax_l correspond to AmpliconMatrix rows
+        # which don't necessarily map 1-to-1 [bijectively] with row AttributeMapping
+        ind = row_attr_map.get_attr_ind('taxonomy')
+        id_l = amp_mat.obj['data']['row_ids']
+        tax_l = row_attr_map.get_ordered_tax_l(ind, id_l)
 
         # superficially test `to_OTU_table`
         df1 = pd.read_csv(
-            os.path.join(testData_dir, 'by_dataset_input/enigma50by30_noAttrMaps_noSampleSet/return/otu_table.tsv'), sep='\t', index_col='taxonomy') 
-        df2 = amp_mat.to_OTU_table()
+            os.path.join(testData_dir, 'by_dataset_input/enigma50by30/return/otu_table.tsv'), 
+            sep='\t', index_col='taxonomy') 
+        df2 = amp_mat.to_OTU_table(tax_l)
 
         self.assertTrue(df1.columns.tolist() == df2.columns.tolist())
         self.assertTrue(df1.index.tolist() == df2.index.tolist()) # index is `taxonomy`
@@ -180,24 +207,119 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
         data1 = df1.iloc[:,1:].values # rest of columns are data
         data2 = df2.iloc[:,1:].values
 
-        self.assertTrue(np.all(np.abs(data1 - data2) < 10**-15)) # python floating point issue 
-                                                                 # e.g., 0.1 + 0.1 + 0.1 => 0.30000000000000004
+        self.assertTrue(np.allclose(data1, data2) and np.allclose(data2, data1))
 
-
-    @patch.dict('kb_faprotax.util.kbase_obj.Var', values={'dfu': get_mock_dfu('dummy10by8'), 'warnings': []})
+    ####################
+    ####################
     def test_AttributeMapping_methods(self):
-        id2attr_d = {'f' * 31 + 'd': 'black hole', 'f' * 31 + 'e': 'quasar', 'f' * 32: 'dark matter'}
 
-        amp_mat = AmpliconMatrix(dummy10by8)
-        attr_map = AttributeMapping(dummy10by8_rowAttrMap, amp_mat)
+        # update with
+        id2attr = {'amplicon_id_2': 'black hole', 'amplicon_id_5': 'quasar', 'amplicon_id_9': 'dark matter'}
 
-        ind = attr_map.add_attribute_slot_warn('celestial body', 'unit testing')
-        attr_map.update_attribute(ind, id2attr_d)
-        self.assertTrue(len(Var.warnings) == 0)
+        # use as cm since patch.dict decs interfering with e/o for some reason
+        with patch.dict('kb_faprotax.util.kbase_obj.Var', values={
+                        'tmp': 'AttrMap_methods', 'dfu': get_mock_dfu('dummy10by8'), 'warnings': [], }):
+            amp_mat = AmpliconMatrix(dummy10by8)
+            row_attr_map = AttributeMapping(dummy10by8_rowAttrMap, amp_mat)
+
+        # update in new attribute/upload slot
+        with self.subTest():
+            ind0 = row_attr_map.add_attribute_slot_warn('celestial body', 'unit testing')
+            row_attr_map.map_update_attribute(ind0, id2attr)
+
+            self.assertTrue(ind0 == row_attr_map.attributes_length-1, '%d vs %d' % (ind0, row_attr_map.attributes_length-1))
+            self.assertTrue(len(Var.warnings) == 0)
+            row_attr_map._check_attr_consistent(ind0, 'celestial body', 'unit testing', id2attr)
+
+        # update in existing attribute/upload slot
+        with self.subTest():
+            ind1 = row_attr_map.add_attribute_slot_warn('celestial body', 'upload')
+            row_attr_map.map_update_attribute(ind1, id2attr)
+
+            self.assertTrue(ind1 < row_attr_map.attributes_length-1)
+            self.assertTrue(len(Var.warnings) == 1)
+            row_attr_map._check_attr_consistent(ind1, 'celestial body', 'upload', id2attr)
+
+        #
+        self.assertTrue(row_attr_map.get_attr_ind('gene') is None)
+
+        # gets first attribute match
+        self.assertTrue(row_attr_map.get_attr_ind('celestial body') == ind1)
+
+    ####################
+    ####################
+    def test_AmpliconMatrix_validation(self):
+        '''
+        Test validation of amplicon table in AmpliconMatrix
+        Should be (1) count data,  missing (None) allowed
+        Can assume that obj holds data in list of lists of numeric/None
+        '''
         
-        ind = attr_map.add_attribute_slot_warn('celestial body', 'upload')
-        attr_map.update_attribute(ind, id2attr_d)
-        self.assertTrue(len(Var.warnings) == 1)
+        logging.info('Testing with test_AmpliconMatrix_validation')
+
+        # use as cm since patch.dict decs interfering with e/o for some reason
+        with patch.dict('kb_faprotax.util.kbase_obj.Var', values={
+                        'tmp': 'AmpMat_validation', 'dfu': get_mock_dfu('dummy10by8')}):
+            amp_mat = AmpliconMatrix(dummy10by8)
+
+        
+        with self.assertRaisesRegex(ValidationException, '[Ii]nteger'): amp_mat.validate_amplicon_abundance_data()
+
+
+        amp_mat.obj['data']['values'] = [0.0, 0.0, 1319.0, 1.0] # float
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [0, 0, 1319, 1] # int
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0., 0., 1319., 1.] # float, with missing
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0, 0, 1319, 1] # int, with missing
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0, -0., 1319.0, 1] # int/float, with missing
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, None, 0, -0, 0.0, 0, 0.] # 0s, with missing
+        amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0.999999999] # close enough
+        amp_mat.validate_amplicon_abundance_data() 
+
+        amp_mat.obj['data']['values'] = [None, -0.0000000001] # close enough
+        amp_mat.validate_amplicon_abundance_data() 
+
+        
+        amp_mat.obj['data']['values'] = [0.9]
+        with self.assertRaisesRegex(ValidationException, '[Ii]nteger'): amp_mat.validate_amplicon_abundance_data() 
+
+        amp_mat.obj['data']['values'] = [-1]
+        with self.assertRaisesRegex(ValidationException, '[Nn]egative'): amp_mat.validate_amplicon_abundance_data() 
+
+        amp_mat.obj['data']['values'] = [None, None, None]
+        with self.assertRaisesRegex(ValidationException, 'all missing'): amp_mat.validate_amplicon_abundance_data() 
+
+        amp_mat.obj['data']['values'] = [None]
+        with self.assertRaisesRegex(ValidationException, 'all missing'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, -1]
+        with self.assertRaisesRegex(ValidationException, '[Nn]egative'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, None, 1.00001]
+        with self.assertRaisesRegex(ValidationException, '[Ii]nteger'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [-1.0, 0, 1319]
+        with self.assertRaisesRegex(ValidationException, '[Nn]egative'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0, 1, 2, 3, 4.5]
+        with self.assertRaisesRegex(ValidationException, '[Ii]nteger'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [None, 0.0, 1.0, 2.0, 3.0, 4.00001] # 4.00001 would pass with np.allclose default rtol
+        with self.assertRaisesRegex(ValidationException, '[Ii]nteger'): amp_mat.validate_amplicon_abundance_data()
+
+        amp_mat.obj['data']['values'] = [0.9, -0.9]
+        with self.assertRaises(ValidationException): amp_mat.validate_amplicon_abundance_data() 
 
 
 
@@ -231,14 +353,17 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 ########################## AmpliconMatrix input #######################################################
 ####################################################################################################
 
+# TODO test: missing, rel abund vs raw abund, no tax
+
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_RDPClsf'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.GenericsAPI', new=lambda *a, **k: get_mock_gapi())
     @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconMatrix_tax_field(self):
         ret = self.serviceImpl.run_FAPROTAX(
             self.ctx, {
                 **self.params_ws,
-                'input_upa': enigma50by30,
+                'input_upa': enigma50by30_RDPClsf,
                 'tax_field': 'RDP Classifier taxonomy, conf=0.777, gene=silva_138_ssu, minWords=default', # TODO don't expose minWords in UI/attribute ?
                 'output_amplicon_matrix_name': 'a_name',
             })
@@ -256,6 +381,7 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
                 })
             
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma50by30_noSampleSet'))
+    @patch_('kb_faprotax.kb_faprotaxImpl.GenericsAPI', new=lambda *a, **k: get_mock_gapi())
     @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconMatrix_noSampleSet(self):
@@ -263,12 +389,14 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             self.ctx, {
                 **self.params_ws,
                 'input_upa': enigma50by30_noSampleSet,
+                'tax_field': 'taxonomy',
             })
 
         self.assertTrue(len(Var.params_report.objects_created) == 3)
 
     @patch_('kb_faprotax.kb_faprotaxImpl.DataFileUtil', new=lambda *a: get_mock_dfu('enigma17770by511'))
-    @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('enigma17770by511'))
+    @patch_('kb_faprotax.util.workflow.run_check', new=get_mock_run_check('enigma17770by511')) #
+    @patch_('kb_faprotax.kb_faprotaxImpl.GenericsAPI', new=lambda *a, **k: get_mock_gapi())
     @patch_('kb_faprotax.kb_faprotaxImpl.FunctionalProfileUtil', new=lambda *a, **k: get_mock_fpu())
     @patch_('kb_faprotax.kb_faprotaxImpl.KBaseReport', new=lambda *a, **k: get_mock_kbr())
     def test_AmpliconMatrix_against_reference(self):
@@ -283,15 +411,14 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             self.ctx, {
                 **self.params_ws,
                 'input_upa': enigma17770by511,
+                'tax_field': 'taxonomy',
                 }
             )
 
         self.assertTrue(len(Var.params_report.objects_created) == 4)
 
-        # only check results against reference
-        # if full pipeline has been run
-        if do_patch:
-            return
+        ##
+        ## Only important to check results if actual run occcurred (as opposed to mocked)
 
         logging.info('Comparing traits in AttributeMapping to answers')
 
@@ -430,8 +557,11 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
             print('Test workspace was deleted')
         dec = '!!!' * 220
         print(dec, "DON'T FORGET TO SEE DIFF, HTML REPORT(S)", dec)
-        print('Tests run:', cls.list_tests())
-
+        skipped_tests = list(set(all_tests) - set(cls.list_tests()))
+        print('* All tests (%d): %s' % (len(all_tests), all_tests))
+        print('* Tests skipped (%d): %s' % (len(skipped_tests), skipped_tests))
+        print('* Tests run (%d): %s' % (len(cls.list_tests()), cls.list_tests()))
+        
 
     def shortDescription(self):
         '''Override unittest using test*() docstrings in lieu of test*() method name in output summary'''
@@ -443,6 +573,10 @@ human_pathogens_all,animal_parasites_or_symbionts,aromatic_compound_degradation,
 #!!!!!!!!!!!!!!!!!!!!!!!!!!! select what to run !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+all_tests = []
+for key, value in kb_faprotaxTest.__dict__.items():
+    if key.startswith('test') and callable(value):
+        all_tests.append(key)
 '''
 When you just want to run certain tests,
 e.g., filter to tests in `run_tests`
@@ -451,11 +585,12 @@ Comment out parts like `delattr` to deactivate
 '''
 unit_tests = [
     'test_parse_faprotax_functions', 'test_run_check',
+    'test_AmpliconMatrix_validation', 'test_AmpliconMatrix_methods', 'test_AttributeMapping_methods',
     'test_Genome_methods', 'test_GenomeSet_methods',
 ]
 AmpliconMatrix_integration_tests = [
     'test_AmpliconMatrix_tax_field', 
-    'test_AmpliconMatrix_noRowAttributeMapping', 'test_AmpiconMatrix_noSampleSet',
+    'test_AmpliconMatrix_noRowAttributeMapping', 'test_AmpliconMatrix_noSampleSet',
     'test_AmpliconMatrix_against_reference'
 ]
 GenomeSet_integration_tests = [
@@ -465,10 +600,9 @@ GenomeSet_integration_tests = [
 ]
 run_tests = ['test_AmpliconMatrix_against_reference']
 
-for key, value in kb_faprotaxTest.__dict__.copy().items():
-    if key.startswith('test') and callable(value):
-        if key not in GenomeSet_integration_tests:
-            delattr(kb_faprotaxTest, key)
+for test in all_tests:
+    if test not in run_tests:#(unit_tests + AmpliconMatrix_integration_tests):
+            delattr(kb_faprotaxTest, test)
             pass
 
 

@@ -27,6 +27,8 @@ RUN conda create --yes --name py2 python=2.7 numpy
 RUN pip install numpy==1.15.4 pandas
 RUN pip install dotmap
 
+RUN pip install numpy==1.19.2 # fewer warnings
+
 ENV PYTHONUNBUFFERED=True
 
 # -----------------------------------------

@@ -115,25 +115,17 @@ def do_AmpliconMatrix_workflow():
     ####
     #####
 
-    ind, tax_attribute = row_attr_map.get_tax_ind_attribute(
-        Var.params.getd('tax_field')
-    ) # either find user-entered tax, or detect an attribute that holds tax
+    ind = row_attr_map.get_attr_ind(Var.params['tax_field'] ) # find index of user-entered tax
 
     if ind is None:
-        tax_field = params.getd('tax_field')
         raise NoTaxonomyException(
-            "Sorry no taxonomy was found in row AttributeMapping %s "    # TODO test this case
-            "%s"
-            "using case-insensitive search string 'taxonomy'" 
-            % (
-                ("either using row AttributeMapping attribute of %s or " % tax_field) if tax_field is not None else '',
-                row_attr_map.name
-            )
+            "Sorry no taxonomy named `%s` was found in row AttributeMapping `%s`"    # TODO test this case
+            % (Var.params['tax_field'], row_attr_map.name)
         )
 
     # id_l and tax_l correspond to AmpliconMatrix rows
     id_l = amp_mat.obj['data']['row_ids']
-    tax_l = row_attr_map.get_tax_l(ind, id_l)
+    tax_l = row_attr_map.get_ordered_tax_l(ind, id_l)
 
 
 
@@ -242,6 +234,7 @@ def do_AmpliconMatrix_workflow():
     ####
     #####
 
+    # TODO will 0-sized FP crash? if so, check for that
                  
     ### Organism FP ###
 

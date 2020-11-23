@@ -6,6 +6,7 @@ import os
 import time
 import inspect
 import time as time_
+import traceback as tb
 
 from .varstash import Var
 
@@ -16,8 +17,9 @@ subproc_run = functools.partial(
 TAG_WIDTH = 80
 MAX_LINES = 70
 
+# TODO print stack (to stdout) with numlines option
 
-def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=False, subproc_run_kwargs={}, print_kwargs={}):
+def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=False, subproc_run_kwargs={}, print_kwargs={}, stack=False):
     """
     For debug printing
     Also executes shell/python commands, printing the command and the outcome
@@ -69,10 +71,17 @@ def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=
         if time:
             t = time_.time() - t0
             print('[%fs]' % t)
+
+    if stack is True:
+        print('>>', 'tb.print_stack(file=sys.stdout')
+        tb.print_stack(file=sys.stdout)
+    elif type(stack) is int:
+        print('>>', 'tb.print_stack(limit=%d, file=sys.stdout)' % stack)
+        tb.print_stack(limit=stack, file=sys.stdout)
     
     print('-' * TAG_WIDTH)
 
-    if exit == True:
+    if exit is True:
         sys.exit(0)
     
     # return last retcode

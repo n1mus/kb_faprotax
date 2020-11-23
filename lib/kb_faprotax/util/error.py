@@ -4,6 +4,8 @@ class NoWsReferenceException(Exception): pass
 
 class NonZeroReturnException(Exception): pass
 
+class ValidationException(Exception): pass
+
 msg_overwriteAttribute = (
 'Overwriting attribute `%s` with source `%s` in row AttributeMapping with name `%s`')
 
