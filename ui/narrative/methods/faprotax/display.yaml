@@ -28,7 +28,7 @@ parameters :
         ui-name : |
             Input object
         short-hint : |
-            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code><br><code>AmpliconMatrix</code> objects must reference a row <AttributeMapping> that has taxonomy
+            Object of type <code>AmpliconSet</code> or <code>GenomeSet</code><br><code>AmpliconMatrix</code> objects must reference a row <code>AttributeMapping</code> that has taxonomy
             
     tax_field:
         ui-name: |
