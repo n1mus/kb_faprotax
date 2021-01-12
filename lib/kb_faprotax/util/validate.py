@@ -10,9 +10,7 @@ from .dprint import dprint
 MISSING_VALS = [None, '', 'None', np.nan] # Below functions should implicitly handle these missing values
 
 class Validate:
-    '''
-    Put them in the same class so they can inter-reference
-    '''
+    
 ####################################################################################################
 ####################################################################################################
     @classmethod

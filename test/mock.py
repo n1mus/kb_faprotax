@@ -13,7 +13,7 @@ from installed_clients.KBaseReportClient import KBaseReport
 from kb_faprotax.util.dprint import dprint
 from kb_faprotax.util.varstash import Var
 from kb_faprotax.util.workflow import run_check
-from .upa import *
+from upa import *
 
 
 ##################################
@@ -23,44 +23,13 @@ testData_dir = '/kb/module/test/data'
 ##################################
 
 
-mock_ws = create_autospec(Workspace, instance=True) # get_object_info3
-mock_dfu = create_autospec(DataFileUtil, instance=True) # get_objects, save_objects (for AmpliconSet workflow)
-mock_gapi = create_autospec(GenericsAPI, instance=True) # save_object
-mock_run_check = create_autospec(run_check) # avoid lengthy runs
-mock_kbr = create_autospec(KBaseReport, instance=True) # create_extended_report
-
-""" Trying to tease these out from get_mock_dfu
-#####
-#####
-#####
-def mock_dfu_save_objects(params):
-    params_str = str(params)
-    if len(params_str) > 100: params_str = params_str[:100] + ' ...'
-    logging.info('Mocking `dfu.save_objects` with `params=%s`' % params_str)
-    
 
 #####
 #####
 #####
-def mock_dfu_get_objects(params):
-    logging.info('Mocking `dfu.get_objects` with `params=%s`' % str(params))
-
-    upa = params['object_refs'][0]
-    flnm = {
-        enigma50by30_noAttrMaps_noSampleSet = 'AmpliconMatrix.json',
-        enigma50by30_noSampleSet = 'AmpliconMatrix.json',
-        enigma50by30 = 'AmpliconMatrix.json',
-        }[upa]
-    flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
-
-    with open(flpth) as f:
-        obj = json.load(f)
-
-    return obj
-"""
-
-def get_mock_fpu(dataset=None):
-    mock_fpu = create_autospec(FunctionalProfileUtil, instance=True)
+mock_fpu = create_autospec(FunctionalProfileUtil, instance=True)
+def get_mock_fpu():
+    mock_fpu.reset_mock()
 
     def mock_import_func_profile(params):
         logging.info('Mocking `fpu.import_func_profile` with `params=%s`' % str(params))
@@ -86,13 +55,15 @@ def get_mock_dfu(dataset):
     It's a global so it can be edited in test-method
     '''
     #dprint('dataset', run=locals(), stack=10)
+       # return clean `mock_dfu`
+
+
+    mock_dfu = create_autospec(DataFileUtil, instance=True) # get_objects, save_objects (for AmpliconSet workflow)
     
+
     # reset
-    mock_dfu.reset_mock(return_value=True, side_effect=True)
-    
-    # return clean `mock_dfu`
     if dataset == None:
-        return mock_dfu
+        return mock_dfu 
 
     ##
     ## mock `save_objects`
@@ -143,7 +114,8 @@ def get_mock_dfu(dataset):
 #####
 #####
 #####
-def get_mock_gapi(dataset=None):
+mock_gapi = create_autospec(GenericsAPI, instance=True)
+def get_mock_gapi():
     mock_gapi.reset_mock() # doesn't have side_effect or return_value?
 
     def mock_save_object(params):
@@ -158,7 +130,8 @@ def get_mock_gapi(dataset=None):
 #####
 #####
 #####
-def get_mock_kbr(dummy_dataset=None): # allow dummy param since the other mocks take `dataset` arg
+mock_kbr = create_autospec(KBaseReport, instance=True)
+def get_mock_kbr():
     # reset
     mock_kbr.reset_mock(return_value=True, side_effect=True)
 
@@ -181,7 +154,7 @@ def get_mock_kbr(dummy_dataset=None): # allow dummy param since the other mocks 
 #####
 def get_mock_run_check(dataset):
     # reset
-    mock_run_check.reset_mock()
+    mock_run_check = create_autospec(run_check)
 
     # side effect
     def mock_run_check_(cmd):

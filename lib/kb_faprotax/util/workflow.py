@@ -197,10 +197,12 @@ def do_AmpliconMatrix_workflow():
     #####
 
 
+    # generalized syntax for the nesting of parameterized attribute name strings?
+    # Python syntax. escaping?
 
-    attribute = 'FAPROTAX Functions'
-    source = 'kb_faprotax/run_FAPROTAX'
-    
+    attribute = 'MetaCyc Functions (taxonomy="%s")' % Var.params['tax_field']
+    source = 'FAPROTAX'    
+
     '''
     tax2groups = parse_tax2groups(groups2records_table_dense_flpth)
     id2groups = {id: tax for id, (tax, groups) in zip(id_l, tax2groups.items())}
@@ -213,16 +215,17 @@ def do_AmpliconMatrix_workflow():
     if Var.debug: 
         assert tax_order == tax_l, '`%s`\n`%s`' % (tax_order, tax_l)
 
-    ind = row_attr_map.add_attribute_slot_warn(attribute, source)
+    ind, attribute = row_attr_map.add_attribute_slot(attribute, source)
     row_attr_map.map_update_attribute(ind, id2groups)
     row_attr_map_upa_new = row_attr_map.save()
 
     amp_mat.obj['row_attributemapping_ref'] = row_attr_map_upa_new
-    amp_mat_upa_new = amp_mat.save(name=Var.params.getd('output_amplicon_matrix_name'))
+    amp_mat.name = Var.params['output_amplicon_matrix_name']
+    amp_mat_upa_new = amp_mat.save()
 
     Var.objects_created = [
-        {'ref': row_attr_map_upa_new, 'description': 'Added or updated attribute `%s`' % attribute}, 
-        {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference'},
+        {'ref': row_attr_map_upa_new, 'description': 'Added attribute `%s`' % attribute}, 
+        {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference to `%s`' % row_attr_map_upa_new},
     ]
 
 
@@ -234,9 +237,7 @@ def do_AmpliconMatrix_workflow():
     ####
     #####
 
-    # TODO will 0-sized FP crash? if so, check for that
-                 
-    ### Organism FP ###
+    ### Amplicon FP ###
 
     # map groups2records back to groups2ids
     groups2ids_table_flpth = os.path.join(Var.run_dir, 'groups2ids.tsv')
@@ -251,40 +252,33 @@ def do_AmpliconMatrix_workflow():
         profile_category='organism',
         data_epistemology='predicted',
         epistemology_method='FAPROTAX',
-        description='Amplicon vs FAPROTAX functions. In binary for association.',
+        description='Amplicon functional profile',
     ))['func_profile_ref']
 
     Var.objects_created.append(
-        dict(ref=func_prof_amplicon_upa, description='Amplicon FunctionalProfile')
+        dict(ref=func_prof_amplicon_upa, description='Amplicon functional profile')
     )
 
-    ### Community FP ###
-    if amp_mat.obj.get('sample_set_ref') is None:
-        msg = (
-            'AmpliconMatrix with name %s has no SampleSet reference, '
-            'and so making a community FunctionalProfile is prohibited'
-        )
-        logging.warning(msg)
-        Var.warnings.append(msg)
 
-    else:
-        func_prof_sample_upa = Var.fpu.import_func_profile(dict(
-            workspace_id=Var.params['workspace_id'],
-            func_profile_obj_name='%s.FAPROTAX_collapsed_func_table' % amp_mat.name,
-            original_matrix_ref=amp_mat_upa_new, 
-            profile_file_path=collapsed_func_table_flpth,
-            profile_type='mg',
-            profile_category='community',
-            data_epistemology='predicted',
-            epistemology_method='FAPROTAX',
-            description='Metagenomic sample vs FAPROTAX functions'
-        ))['func_profile_ref']
+    ### Metagenome FP ###
+
+    func_prof_sample_upa = Var.fpu.import_func_profile(dict(
+        workspace_id=Var.params['workspace_id'],
+        func_profile_obj_name='%s.FAPROTAX_collapsed_func_table' % amp_mat.name,
+        original_matrix_ref=amp_mat_upa_new, 
+        profile_file_path=collapsed_func_table_flpth,
+        profile_type='mg',
+        profile_category='community',
+        data_epistemology='predicted',
+        epistemology_method='FAPROTAX',
+        description='Sample functional profile'
+    ))['func_profile_ref']
 
 
-        Var.objects_created.append(
-            dict(ref=func_prof_sample_upa, description='Sample FunctionalProfile')
-        )
-    
+    Var.objects_created.append(
+        dict(ref=func_prof_sample_upa, description='Sample functional profile')
+    )
+
 
 
     #

@@ -1,48 +1,33 @@
 import functools
-import json
+import json as json_
 import subprocess
 import sys
 import os
-import time
 import inspect
-import time as time_
-import traceback as tb
+import time as _time
+import functools
 
-from .varstash import Var
-
+debug = True # toggle to turn off debug printing
 
 subproc_run = functools.partial(
-    subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
+        subprocess.run, stdout=sys.stdout, stderr=sys.stderr, shell=True, executable='/bin/bash')
 
 TAG_WIDTH = 80
-MAX_LINES = 70
+MAX_LINES = 15
 
-# TODO print stack (to stdout) with numlines option
+def dprint(*args, run='py', json=True, where=False, time=False, max_lines=MAX_LINES, exit=False, 
+           subproc_run_kwargs={}, print_kwargs={}):
+    '''Debug print'''
 
-def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=False, subproc_run_kwargs={}, print_kwargs={}, stack=False):
-    """
-    For debug printing
-    Also executes shell/python commands, printing the command and the outcome
-
-    Input:
-        args - strings, which can be evaluated with Bash or as python
-        run - `shell` or `cli` if the `args` are for Bash, or a namespace dictionary if `args` are 
-            python code
-        where - include information (file, function, line) about the calling stack frame
-        time - include how long it took to process each of `args`
-        max_lines - limit how many lines to print (this will be json format)
-        exit - exit after printing (for debugging)
-    """
-
-    if not Var.debug:
-        return
+    if debug is not True:
+        return None # dprint can be expected to return retcode
 
     print = functools.partial(__builtins__['print'], **print_kwargs)
 
     def print_format(arg):
-        if isinstance(arg, (dict, list)):
-            arg_json = json.dumps(arg, indent=3, default=str)
-            if max_lines != None and max_lines != False and arg_json.count('\n') > max_lines:
+        if json is True and isinstance(arg, (dict, list)):
+            arg_json = json_.dumps(arg, indent=3, default=str)
+            if max_lines is not None and arg_json.count('\n') > max_lines:
                 arg_json = '\n'.join(arg_json.split('\n')[0:max_lines] + ['...'])
             print(arg_json)
         else:
@@ -51,51 +36,44 @@ def dprint(*args, run=False, where=False, time=False, max_lines=MAX_LINES, exit=
     print('#' * TAG_WIDTH)
 
     if where:
-        last_frame = inspect.stack()[1]
-        print("(file `%s`)\n(func `%s`)\n(line `%d`)" % (os.path.basename(last_frame[1]), last_frame[3], last_frame[2]))
+        stack = inspect.stack()
+        print("(file `%s`)\n(func `%s`)\n(line `%d`)" % (stack[1][1], stack[1][3], stack[1][2]))
     
     for arg in args:
         if time:
-            t0 = time_.time()
+            t0 = _time.time()
         if run:
             print('>> ' + arg)
-            if run in ['cli', 'shell']:
+            if run in ['cli', 'shell', 'bash']:
                 completed_proc = subproc_run(arg, **subproc_run_kwargs)
                 retcode = completed_proc.returncode
             elif isinstance(run, dict):
                 print_format(eval(arg, run))
+            elif run in ['py', 'python']:
+                frame = inspect.stack()[1].frame
+                env = {**frame.f_globals, **frame.f_locals}
+                print_format(eval(arg, env))
             else:
                 assert False
         else:
             print_format(arg)
         if time:
-            t = time_.time() - t0
+            t = _time.time() - t0
             print('[%fs]' % t)
-
-    if stack is True:
-        print('>>', 'tb.print_stack(file=sys.stdout')
-        tb.print_stack(file=sys.stdout)
-    elif type(stack) is int:
-        print('>>', 'tb.print_stack(limit=%d, file=sys.stdout)' % stack)
-        tb.print_stack(limit=stack, file=sys.stdout)
     
     print('-' * TAG_WIDTH)
 
-    if exit is True:
+    if exit:
         sys.exit(0)
     
     # return last retcode
-    if run and run in ['cli', 'shell']:
+    if run in ['cli', 'shell']:
         return retcode
 
 
 def where_am_i(f):
     '''Decorator'''
     def f_new(*args, **kwargs):
-        dprint("where am i?\n(func `%s`)" % (f.__qualname__), where=False)
+        dprint("where am i? in module `%s` method `%s`" % (globals()['__name__'], f.__qualname__))
         f(*args, **kwargs)
     return f_new
-
-
-
-

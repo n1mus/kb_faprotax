@@ -1,0 +1,6 @@
+[run]
+omit =
+    */__init__.py
+    */kb_faprotaxServer.py
+    */baseclient.py
+    */authclient.py

@@ -59,12 +59,27 @@ class kb_faprotax:
         self.shared_folder = config['scratch']
         self.workspace_url = config['workspace-url']
 
-        self.Var = { # carry over into globals `Var`, regardless of resetting, for all API-method runs
+        reset_Var() # reset globals for this API method run
+        Var.update({ # carry over into globals `Var`, regardless of resetting, for all API-method runs
             'shared_folder': config['scratch'],
             'kbase_endpoint': config['kbase-endpoint'], # contains environment, for constructing Genome landing page url
-            'template_flpth': '/kb/module/ui/template/edge_data.tt',
-        }
+            #---
+            'ws': Workspace(self.workspace_url),
+            'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
+            'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
+            'gapi': GenericsAPI(self.callback_url, service_ver='dev'),
+            'fpu': FunctionalProfileUtil(self.callback_url, service_ver='dev'), # TODO overhead?
+            #---
+            'warnings': [],
+            #---
+            'run_dir': os.path.join(self.shared_folder, 'kbfptx_' + str(uuid.uuid4())),
+        })
         
+        os.mkdir(Var.run_dir)
+        Var.update({
+            'return_dir': os.path.join(Var.run_dir, 'return'),
+        })
+        os.mkdir(Var.return_dir)
 
         #END_CONSTRUCTOR
         pass
@@ -83,33 +98,11 @@ class kb_faprotax:
     
         dprint('params', run=locals())
 
-        #
-        ##
-        ### set up globals `Var`
-        ####
-        #####
-
-        reset_Var() # reset globals for this API method run
-
+        
         Var.update({ 
-            **self.Var,
-            'ws': Workspace(self.workspace_url),
-            'dfu': DataFileUtil(self.callback_url), # instantiate here so within runtime of @patch
-            'kbr': KBaseReport(self.callback_url, service_ver='dev'), # instantiate here so within runtime of @patch 
-            'gapi': GenericsAPI(self.callback_url, service_ver='dev'),
-            'fpu': FunctionalProfileUtil(self.callback_url, service_ver='dev'), # TODO overhead?
             'params': Params(params),
-            'run_dir': os.path.join(self.shared_folder, 'kbfptx_' + str(uuid.uuid4())),
-            'warnings': [],
         })
 
-        os.mkdir(Var.run_dir)
-
-        Var.update({
-            'return_dir': os.path.join(Var.run_dir, 'return'),
-        })
-
-        os.mkdir(Var.return_dir)
 
 
 

@@ -40,37 +40,25 @@ parameters :
         ui-name: |
             Output AmpliconMatrix name
         short-hint: |
-            New name for input AmpliconMatrix when it is updated to reference row AttributeMapping updated with FAPROTAX functions. Default behavior (leaving blank) is to save over input AmpliconMatrix
-
+            Output AmpliconMatrix name
 description : |
 
     <!--------------------------------------------------------------------------------------------->
-    <h2>
+    <h3>
     App Behavior
-    </h2>
+    </h3>
+
 
     <p>
-    This app is implemented primarily for the amplicon workflow. However, 
-    it does also take <code>GenomeSet</code> objects. 
-    In that case, just ignore the rest of the params.
-    </p>
-
-    <p>
-    The app, like the application it wraps, expects abundance tables, with missing values allowed.
-    </p>
-
-    <p>
-    Note: currently, if input <code>AmpliconMatrix</code>'s row <code>AttributeMapping</code> 
-    has duplicate <code>attribute</code>/<code>source</code> pairs in its <code>attributes</code> field,
-    they will generally not be able to be distinguished from one another and the first one may be computed with and any others may likely be ignored.
-    Generating duplicate <code>attribute</code>/<code>source</code> pairs is currently avoided in amplicon workflow apps.
+    Mapping from any taxonomy to FAPROTAX traits is always the same.
+    If FAPROTAX traits for the designated taxonomy already exist, nothing will be written.
     </p>
 
 
     <!--------------------------------------------------------------------------------------------->
-    <h2>
+    <h3>
     Resources
-    </h2>
+    </h3>
 
     <a href="http://www.loucalab.com/archive/FAPROTAX/lib/php/index.php?section=Instructions">FAPROTAX usage</a>
 

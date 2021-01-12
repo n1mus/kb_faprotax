@@ -13,7 +13,6 @@ class Params:
 
 
     DEFAULTS = {
-            'output_amplicon_matrix_name': None,
     }
 
     def __init__(self, params):
@@ -23,11 +22,7 @@ class Params:
 
         
         ## Custom transformations to internal state ##
-        ## This is kind of silly ##
-        ## But the code is written before I figure out how the narrative passes things ##
 
-        if params.get('output_amplicon_matrix_name') == '':
-            params['output_amplicon_matrix_name'] = None # treat empty string as null case since ui only returns strings for string type
         if type(params.get('tax_field')) is list:
             params['tax_field'] = params['tax_field'][0]
        

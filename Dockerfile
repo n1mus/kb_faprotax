@@ -31,6 +31,8 @@ RUN pip install numpy==1.19.2 # fewer warnings
 
 ENV PYTHONUNBUFFERED=True
 
+RUN pip install pipenv coverage pytest-cov python-coveralls flake8
+
 # -----------------------------------------
 
 COPY ./ /kb/module

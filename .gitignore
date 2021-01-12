@@ -5,3 +5,4 @@ test.cfg
 __pycache__
 *.pyc
 by_dataset_input/
+*.tmp

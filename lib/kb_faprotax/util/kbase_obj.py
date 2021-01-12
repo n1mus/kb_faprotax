@@ -10,6 +10,7 @@ from .dprint import dprint
 from .varstash import Var
 from .error import *
 from .validate import Validate as vd
+from .file import get_numbered_duplicate
 
 pd.set_option('display.max_rows', 100)
 pd.set_option('display.max_columns', 20)
@@ -46,7 +47,7 @@ class AmpliconMatrix:
         self.obj = obj['data'][0]['data']
 
         # comment run_dir with AmpliconMatrix name
-        if 'run_dir' in Var and os.path.exists(Var.run_dir):
+        if Var.debug and 'run_dir' in Var and os.path.exists(Var.run_dir):
             dprint('touch %s' % os.path.join(Var.run_dir, '#' + self.name), run='cli')
         
 
@@ -111,13 +112,6 @@ class AmpliconMatrix:
             )
 
         # Gte 0
-        '''
-        import warnings
-        warnings.filterwarnings(action='error', message='.+less')
-        dprint('a', run={**globals(),**locals()})
-        dprint('np.round(a)', run={**globals(),**locals()})
-        dprint('np.round(a)<0', run={**globals(),**locals()})
-        '''
         if np.any(np.round(a) < 0): # allow for small negative deltas
             raise ValidationException(
                 base_msg + 'Negative value detected'
@@ -133,21 +127,8 @@ class AmpliconMatrix:
         --------
         Swap out ids in id2attr so they end up mapping AttributeMapping ids to attributes
         '''
-        if f'{axis}_attributemapping_ref' not in self.obj:
-            raise Exception(
-                'Trying to map AmpliconMatrix %s_ids to %s AttributeMapping ids '
-                "when AmpliconMatrix doesn't have %s AttributeMapping"
-                % (axis, axis, axis)
-            )
-        elif f'{axis}_mapping' not in self.obj:
-            msg = (
-                'Dude this object has a %s_attributemapping_ref '
-                'and needs a %s_mapping. Letting it slide for now.'
-                % (axis, axis)
-            )
-            logging.warning(msg)
-            var.warnings.append(msg)
-            return id2attr
+        if f'{axis}_mapping' not in self.obj:
+            pass
 
         id2attr = {
             self.obj[f'{axis}_mapping'][id]: attr
@@ -156,11 +137,11 @@ class AmpliconMatrix:
 
         return id2attr
 
-    def save(self, name=None):
-
+    def save(self):
+        
         upa_new = Var.gapi.save_object({
             'obj_type': 'KBaseMatrices.AmpliconMatrix', # TODO version
-            'obj_name': name if name is not None else self.name,
+            'obj_name': self.name,
             'data': self.obj,
             'workspace_id': Var.params['workspace_id'],
         })['obj_ref']
@@ -204,12 +185,12 @@ class AttributeMapping:
     def attributes_length(self):
         return len(self.obj['attributes'])
 
-
-
     @property
     def instances_length(self):
         return len(next(iter(self.obj['instances'].values()))[0])
 
+    def get_attributes_at(self, ind):
+        return [instance[ind] for instance in self.obj['instances'].values()]
 
     def get_attr_ind(self, tax_field):
         '''
@@ -247,35 +228,27 @@ class AttributeMapping:
             self.obj['instances'][id][ind] = attr
 
 
-    def add_attribute_slot_warn(self, attribute, source) -> int:
+    def add_attribute_slot(self, attribute, source) -> tuple:
         '''
-        If attribute not already entered, add slot for it
-        Return its index in the attributes/instances
+        Return index and name
         '''
         
-        # check if already exists
-        for ind, attr_d in enumerate(self.obj['attributes']):
-            if attr_d['attribute'] == attribute and attr_d['source'] == source:
-                msg = msg_overwriteAttribute % (attribute, source, self.name)
-                logging.warning(msg)
-                Var.warnings.append(msg)
-                return ind
+        # get new name if it's a duplicate
+        attributes = [d['attribute'] for d in self.obj['attributes']]
+        if attribute in attributes:
+            attribute = get_numbered_duplicate(attributes, attribute)
 
-        # append slot to `attributes`
+        # append slots
         self.obj['attributes'].append({
             'attribute': attribute,
             'source': source,
-            })
-
-        # append slots to `instances` 
-        for attr_l in self.obj['instances'].values():
-            attr_l.append('')
-
-        return len(attr_l) - 1
-
+        })
+        for instance in self.obj['instances'].values():
+            instance.append(None)
+        #
+        return len(self.obj['attributes']) - 1, attribute
 
     def save(self):
-        
         info = Var.dfu.save_objects({
             'id': Var.params['workspace_id'],
             "objects": [{
@@ -301,8 +274,9 @@ class AttributeMapping:
         assert self.obj['attributes'][ind]['source'] == source
         
     
-        for id, attr in id2attr.items():
-            assert self.obj['instances'][id][ind] == attr
+        instances = self.obj['instances']
+        for id, instance in instances.items():
+            assert instance[ind] == id2attr.get(id)
 
         return True
 
