@@ -49,10 +49,6 @@ description : |
     </h3>
 
 
-    <p>
-    Mapping from any taxonomy to FAPROTAX traits is always the same.
-    If FAPROTAX traits for the designated taxonomy already exist, nothing will be written.
-    </p>
 
 
     <!--------------------------------------------------------------------------------------------->

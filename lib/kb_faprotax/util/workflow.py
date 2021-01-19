@@ -200,7 +200,7 @@ def do_AmpliconMatrix_workflow():
     # generalized syntax for the nesting of parameterized attribute name strings?
     # Python syntax. escaping?
 
-    attribute = 'MetaCyc Functions (taxonomy="%s")' % Var.params['tax_field']
+    attribute = 'FAPROTAX Functions (taxonomy=<%s>)' % Var.params['tax_field']
     source = 'FAPROTAX'    
 
     '''
