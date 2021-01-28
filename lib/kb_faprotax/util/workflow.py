@@ -224,11 +224,15 @@ def do_AmpliconMatrix_workflow():
     amp_mat_upa_new = amp_mat.save()
 
     Var.objects_created = [
-        {'ref': row_attr_map_upa_new, 'description': 'Added attribute `%s`' % attribute}, 
-        {'ref': amp_mat_upa_new, 'description': 'Updated row AttributeMapping reference to `%s`' % row_attr_map_upa_new},
+        {
+            'ref': row_attr_map_upa_new, 
+            'description': 'Added attribute `%s`' % attribute.replace('<', '&lt;').replace('>', '&gt;')
+        }, 
+        {
+            'ref': amp_mat_upa_new, 
+            'description': 'Updated row AttributeMapping reference to `%s`' % row_attr_map_upa_new
+        },
     ]
-
-
 
 
     #
@@ -245,7 +249,7 @@ def do_AmpliconMatrix_workflow():
 
     func_prof_amplicon_upa = Var.fpu.import_func_profile(dict(
         workspace_id=Var.params['workspace_id'],
-        func_profile_obj_name='%s.FAPROTAX_groups2records' % amp_mat.name,
+        func_profile_obj_name='%s.groups2records' % amp_mat.name,
         original_matrix_ref=amp_mat_upa_new,
         profile_file_path=groups2ids_table_flpth,
         profile_type='amplicon',
@@ -256,7 +260,7 @@ def do_AmpliconMatrix_workflow():
     ))['func_profile_ref']
 
     Var.objects_created.append(
-        dict(ref=func_prof_amplicon_upa, description='Amplicon functional profile')
+        dict(ref=func_prof_amplicon_upa, description='Amplicon functions')
     )
 
 
@@ -264,7 +268,7 @@ def do_AmpliconMatrix_workflow():
 
     func_prof_sample_upa = Var.fpu.import_func_profile(dict(
         workspace_id=Var.params['workspace_id'],
-        func_profile_obj_name='%s.FAPROTAX_collapsed_func_table' % amp_mat.name,
+        func_profile_obj_name='%s.collapsed_func_table' % amp_mat.name,
         original_matrix_ref=amp_mat_upa_new, 
         profile_file_path=collapsed_func_table_flpth,
         profile_type='mg',
@@ -276,7 +280,7 @@ def do_AmpliconMatrix_workflow():
 
 
     Var.objects_created.append(
-        dict(ref=func_prof_sample_upa, description='Sample functional profile')
+        dict(ref=func_prof_sample_upa, description='Sample functions')
     )
 
 
@@ -311,8 +315,6 @@ def do_AmpliconMatrix_workflow():
         'report_name': report_output['name'],
         'report_ref': report_output['ref'],
     }
-
-    dprint('output', run=locals())
 
     return output
 
